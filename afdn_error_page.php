@@ -37,7 +37,7 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 
 
 	
-	if (isset($_POST['info_update']) && (!empty($_POST['name'])) && (!empty($_POST['num_posts'])))
+	if (isset($_POST['info_update']) && (is_key_valid($_POST['akismetKey'])))
 	{
 		
 		$results = array(	"name" => $_POST['name'],
@@ -49,6 +49,9 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 							);
 		update_option("afdn_error_page", serialize($results));
 	}
+	elseif(isset($_POST['info_update']))
+		$keyInvalid = true;
+		
 	$getOptions = get_option("afdn_error_page");
 	?>
 	
@@ -105,6 +108,10 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 			</fieldset>
 			<fieldset name="akismetSettings" class="options">
 				<legend><strong>Akismet Settings</strong></legend>
+				<?php if($keyInvalid){ ?>
+					<p style="padding: .5em; background-color: #f33; color: #fff; font-weight: bold;"><?php _e('Your key appears invalid. Double-check it.'); ?></p>
+				<?php } ?>				
+				<p>
 				<p>Akismet API Key: <input name="akismetKey" type="text" value="<?php echo $getOptions["akismetKey"]; ?>" /></p>
 				
 			</fieldset>
@@ -126,6 +133,9 @@ add_action('admin_menu', 'afdn_error_page_optionsPage');
 
 function is_comment_spam($name, $email, $comment) {
 	$getOptions = get_option("afdn_error_page");
+	if($getOptions['akismetKey'] == NULL)
+		return "You have not entered a valid key!";
+		
 	# populate comment information
 	$comment_data = array(
 		'user_ip'               => $_SERVER['REMOTE_ADDR'],
@@ -145,6 +155,18 @@ function is_comment_spam($name, $email, $comment) {
 		return "Yes, this is spam";
 	else
 		return "No, this is not spam";
+}
+
+function is_key_valid($keyID){
+	
+	//Create Akismet handle
+	$ak = new Akismet($keyID, get_bloginfo('url'));
+	
+	//Check key
+	if($ak->verify_key())
+		return true;
+	else
+		return false;
 }
 
 
@@ -290,11 +312,8 @@ function afdn_error_page(){
 function forceErrorPage(){
 	return "http://www.andrewferguson.net/wp-content/plugins/afdn_error_page.php?isError=1";
 }
-?>
 
-<?php
-
-$AKISMET_PHP_VERSION = '0.1.0';
+#Akismet class by Paul Duncan at http://www.pablotron.org/?cid=1485
 
 class Akismet {
   var $version;
@@ -308,17 +327,22 @@ class Akismet {
 
   function check_comment($post_args) {
     $this->verify_post_args($post_args);
-    return ($this->call('comment-check', $post_args) != 'false');
+    return ($this->call('comment-check', $post_args, "{$this->api_key}.rest.akismet.com/1.1") != 'false');
   }
 
   function submit_spam($post_args) {
     $this->verify_post_args($post_args);
-    return ($this->call('submit-spam', $post_args) != 'false');
+    return ($this->call('submit-spam', $post_args, "{$this->api_key}.rest.akismet.com/1.1") != 'false');
   }
 
   function submit_ham($post_args) {
     $this->verify_post_args($post_args);
-    return ($this->call('submit-ham', $post_args) != 'false');
+    return ($this->call('submit-ham', $post_args, "{$this->api_key}.rest.akismet.com/1.1") != 'false');
+  }
+  
+  function verify_key() {
+  	$sendKey = array('key' => $this->api_key);
+	return ($this->call('verify-key', $sendKey, "rest.akismet.com/1.1") != 'invalid');  
   }
 
   function verify_post_args($post_args) {
@@ -328,9 +352,10 @@ class Akismet {
         die("missing required akismet key '$key'");
   }
 
-  function call($meth, $post_args) {
+  function call($meth, $post_args, $host) {
     # build post URL
-    $url = "http://{$this->api_key}.rest.akismet.com/1.1/$meth";
+    $url = "http://$host/$meth";
+	//{$this->api_key}.rest.akismet.com/1.1
 
     # add blog to post args
     $post_args['blog'] = $this->blog;
@@ -342,6 +367,7 @@ class Akismet {
     curl_setopt($http, CURLOPT_POST, 1);
     curl_setopt($http, CURLOPT_POSTFIELDS, $post_args);
     curl_setopt($http, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($http, CURLOPT_USERAGENT, "User-Agent: Wordpress/".get_bloginfo('version')." | afdn_errorPage/$pluginVersion");
     
     # do HTTP 
     $ret = curl_exec($http);
@@ -352,7 +378,7 @@ class Akismet {
 
     # close HTTP connection
     curl_close($http);
-
+	
     # return result
     return $ret;
   }
