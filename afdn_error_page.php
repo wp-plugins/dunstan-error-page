@@ -3,7 +3,7 @@
 Plugin Name: Dunstan-style Error Page
 Plugin URI: http://www.andrewferguson.net/wordpress-plugins/#errorpage
 Plugin Description: A fuller featured 404 error page modeled from http://1976design.com/blog/error/
-Version: 1.1
+Version: 1.1Branch
 Author: Andrew Ferguson
 Author URI: http://www.andrewferguson.net/
 */
@@ -247,7 +247,7 @@ function afdn_error_page(){
 	
 					<table border="0">
 	  <tr>
-		<td valign="top" width = "50%">					<h2>Your options</h2>
+		<td valign="top" width = "50%"><div class="post">					<h2>Your options</h2>
 						<ol>
 							<li>Submit an <a href="#quick" title="Jump down to the error reports &#8595;">error report form</a> &#8595;</li>
 							<li>Go to the <a href="<?php echo get_settings('siteurl'); ?>" title="Go to the blog homepage">homepage</a></li>
@@ -263,16 +263,16 @@ function afdn_error_page(){
 									</div>
 								</form>
 							</center>
-						</p>
+						</p></div>
 	</td>
-		<td width="0" valign="top">					<h2>Last <?php echo $getOptions["num_posts"]; ?> blog posts</h2>
+		<td width="0" valign="top"><div class="post">					<h2>Last <?php echo $getOptions["num_posts"]; ?> blog posts</h2>
 						<ol>
 							<?php get_archives('postbypost', $getOptions["num_posts"], 'custom', '<li>', '</li>'); ?>
-						</ol>
+						</ol></div>
 	</td>
 	  </tr>
 	  <tr>
-		<td width="50%" valign="top">					<h2>Quick error report</h2>
+		<td width="50%" valign="top"><div class="post">					<h2>Quick error report</h2>
 						<p>You can quickly report this missing page by clicking the button below <small>(it will reload this page and send <? $nameArray = split(" ", $getOptions["name"]); echo $nameArray[0]; ?> an email with the relevant details attached)</small>.</p>
 						<form method="post" action="">
 							<div>
@@ -280,9 +280,9 @@ function afdn_error_page(){
 								<input type="hidden" name="badpage" value="<?PHP echo $requestURI; ?>" />
 							</div>
 							<p><input type="submit" name="submit_quick" value="submit quick error report" <?php if($reported) echo "disabled"; ?> /></p>
-						</form>
+						</form></div>
 	</td>
-		<td width="50%" valign="top">					<h2>Feedback request</h2>
+		<td width="50%" valign="top"><div class="post">					<h2>Feedback request</h2>
 						<p>If you&#8217;d like some feedback about the content you are looking for, please fill in the form below and I&#8217;ll get back to you. <small>(The page you were after, and the referring page, will be sent automatically.)</small></p>
 						<form method="post" action="">
 							<div>
@@ -295,7 +295,7 @@ function afdn_error_page(){
 								<label for="comment">Comment:</label><br /><textarea id="comment" name="comment" cols="22" rows="5" <?php if($reported) echo "disabled"; ?> ></textarea>
 							</p>						
 							<p><input type="submit" name="submit_feedback" value="submit error report" <?php if($reported) echo "disabled"; ?> /></p>
-						</form>
+						</form></div>
 	</td>
 	  </tr>
 	</table>
