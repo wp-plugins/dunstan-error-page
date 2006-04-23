@@ -57,7 +57,7 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 		update_option("afdn_error_page", serialize($results));					//If it's not, update everything but the API key and....
 		$keyInvalid = true;														//...set a flag that the API key was invalid
 	}
-	$afdn_error_page_getOptions = get_option("afdn_error_page");								//Once everything has been written to the DB, get a new copy just to be sure nothing gets cached (that could be bad)
+	$afdn_error_page_getOptions = get_option("afdn_error_page");				//Once everything has been written to the DB, get a new copy just to be sure nothing gets cached (that could be bad)
 	?>
 	
 	<div class=wrap>
@@ -211,7 +211,8 @@ function afdn_error_page(){
 	<?php get_header(); ?>
 
 	<?php
-		
+		$afdn_error_page_getOptions = get_option("afdn_error_page");
+	
 		if($afdn_error_page_getOptions["accessed"]=="redirect"){
 		  $httpReferer = $_GET['referer'];
 		  $requestURI = $_GET['requested'];
