@@ -36,15 +36,15 @@ $pluginVersion = "1.1"; 																		//Current Version of plugin
 $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.inc?format=txt";	//Where to check for updates
 
 
-	
+
 	if (isset($_POST['info_update']) && (is_key_valid($_POST['akismetKey'])))	//If updates were submited, check to see if the API key is valid
 	{
-		
+
 		$results = array(	"name" => $_POST['name'],
 							"num_posts" => $_POST['num_posts'],
 							"accessed" => $_POST['accessed'],
 							"checkUpdate" => $_POST['checkUpdate'],
-							"akismetKey" => $_POST['akismetKey'],							
+							"akismetKey" => $_POST['akismetKey'],
 							);
 		update_option("afdn_error_page", serialize($results));					//If it is, go ahead and update the information, including the API key
 	}
@@ -52,20 +52,20 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 		$results = array(	"name" => $_POST['name'],
 							"num_posts" => $_POST['num_posts'],
 							"accessed" => $_POST['accessed'],
-							"checkUpdate" => $_POST['checkUpdate'],							
+							"checkUpdate" => $_POST['checkUpdate'],
 							);
 		update_option("afdn_error_page", serialize($results));					//If it's not, update everything but the API key and....
 		$keyInvalid = true;														//...set a flag that the API key was invalid
 	}
 	$afdn_error_page_getOptions = get_option("afdn_error_page");								//Once everything has been written to the DB, get a new copy just to be sure nothing gets cached (that could be bad)
 	?>
-	
+
 	<div class=wrap>
 		<form method="post">
 		<h2>Error Page</h2>
 			<fieldset name="management" class="options">
 				<legend><strong>Management</strong></legend>
-					Check for updates? <input name="checkUpdate" type="radio" value="1" <?php print($afdn_error_page_getOptions["checkUpdate"]==1?"checked":NULL)?> />Yes :: <input name="checkUpdate" type="radio" value="0" <?php print($afdn_error_page_getOptions["checkUpdate"]==0?"checked":NULL)?>/>No		
+					Check for updates? <input name="checkUpdate" type="radio" value="1" <?php print($afdn_error_page_getOptions["checkUpdate"]==1?"checked":NULL)?> />Yes :: <input name="checkUpdate" type="radio" value="0" <?php print($afdn_error_page_getOptions["checkUpdate"]==0?"checked":NULL)?>/>No
 					<?php if($afdn_error_page_getOptions["checkUpdate"]==1){				//If set to 1, then updates will be checked for
 						echo "<br /><br />";
 						$currentVersion = file_get_contents($updateURL);	//Get the latest version number
@@ -78,11 +78,11 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 						}
 						elseif($currentVersion < $pluginVersion){			//Version is higher then current stable (i.e. Alpha/Beta version)
 							echo "Beta version, eh?";
-						}	
+						}
 					}
 						?>
 			</fieldset>
-			
+
 			<fieldset name="configuration" class="options">
 			<legend><strong>Options</strong></legend>
 				<p>Only three configuration options right now. Type in the name of the owner of the blog, how many posts you want displayed on the 404 page, and how the error page is reached. You also need to set your 404 page to index.php?error=404. In apache you would add a line of code that looks similar to this: <code>ErrorDocument 404 "/index.php?error=404"</code>
@@ -94,12 +94,12 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 				&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Redirect
 				<input name="accessed" type="radio" value="redirect" <?php print($afdn_error_page_getOptions["accessed"]=="redirect"?"checked":NULL) ?> /></p>
 			</fieldset>
-			
+
 			<fieldset name="akismetSettings" class="options">
 				<legend><strong>Akismet Settings</strong></legend>
 				<?php if($keyInvalid){ //P.S. I took this from the Akismet plugin. It alerts the user if their key is invalid ?>
 					<p style="padding: .5em; background-color: #f33; color: #fff; font-weight: bold;"><?php _e('Your key appears invalid. Double-check it.'); ?></p>
-				<?php } ?>				
+				<?php } ?>
 				<p>
 				<p>WordPress.com API Key: <input name="akismetKey" type="text" value="<?php echo $afdn_error_page_getOptions["akismetKey"]; ?>" /> (<a href="http://faq.wordpress.com/2005/10/19/api-key/" target="_blank">What is this?</a>)</p>
 			</fieldset>
@@ -119,10 +119,10 @@ add_action('admin_menu', 'afdn_error_page_optionsPage');	//Add Action for adding
 
 function is_comment_spam($name, $email, $comment) {					//Check to see if a submited error report could be spam
 	$afdn_error_page_getOptions = get_option("afdn_error_page");
-	
+
 	if($afdn_error_page_getOptions['akismetKey'] == NULL)							//See if the API key has been set
 		return "You have not entered a valid key!";					//If the API key isn't set, stop the checking process and just let the user know they don't have a key
-		
+
 	# populate comment information
 	$comment_data = array(
 		'user_ip'               => $_SERVER['REMOTE_ADDR'],			//Submitters IP Address
@@ -145,10 +145,10 @@ function is_comment_spam($name, $email, $comment) {					//Check to see if a subm
 }
 
 function is_key_valid($keyID){							//Check the validity of the key
-	
+
 	//Create Akismet handle
 	$ak = new Akismet($keyID, get_bloginfo('url'));
-	
+
 	//Check key
 	if($ak->verify_key())
 		return true;
@@ -162,18 +162,18 @@ function afdn_error_page(){
 	/*Start transfering values from POST*/
 	$referer = $_POST["referer"];
 	$badpage = $_POST["badpage"];
-	
+
 	$name = $_POST["name"];
 	$email = $_POST["email"];
 	$comment = $_POST["comment"];
 	/*End transfering values from POST*/
-	
+
 	if(isset($_POST["submit_quick"])) $submit_quick = true;			//Is this a quick error report or...
 	if(isset($_POST["submit_feedback"])) $submit_feedback = true;	//Is this a detailed error report?
 
 	$siteURL = parse_url(get_settings('siteurl'));					//What is your actual site address?
 	$referedURL = parse_url($_SERVER['HTTP_REFERER']);				//What did the referer say your site address was?
-	
+
 	if($submit_quick)																//For a quick error report
 	{
 		$message = "A 404 error was recieved by ".$_SERVER['REMOTE_ADDR']." on ". date("r", time()).".\n";
@@ -205,27 +205,28 @@ function afdn_error_page(){
 	{
 		$reported = false;															//If a report is attempted to be filed, but didn't go through
 	}
-	
+
 	?>
-	
+
 	<?php get_header(); ?>
 
 	<?php
-		
+		$afdn_error_page_getOptions = get_option("afdn_error_page");
+
 		if($afdn_error_page_getOptions["accessed"]=="redirect"){
 		  $httpReferer = $_GET['referer'];
 		  $requestURI = $_GET['requested'];
-	
+
 		}
 		else{
 		  $httpReferer = $_SERVER['HTTP_REFERER'];
 		  $requestURI = $_SERVER['REQUEST_URI'];
 		}
-		
+
 	?>
 		<div id="content" style = "padding: 20px">
 		<?php if($reported){?>
-			<h3>Thank you for submitting an error report.</h3>				
+			<h3>Thank you for submitting an error report.</h3>
 		<?php } ?>
 			<p>For some reason, the page your trying to access doesn't exist. Hopefully the information below can be of some assistance - <?php print(isset($afdn_error_page_getOptions["name"])?$afdn_error_page_getOptions["name"]:"Mgmt"); ?>.</p>
 			<table border="0">
@@ -275,12 +276,12 @@ function afdn_error_page(){
 							<div>
 								<input type="hidden" name="referer" value="<?PHP echo $httpReferer; ?>" />
 								<input type="hidden" name="badpage" value="<?PHP echo $requestURI; ?>" />
-							</div>						
+							</div>
 							<p>
 								<label for="name">Name:</label><br /><input type="text" id="name" name="name" size="30" <?php if($reported) echo "disabled"; ?> /><br />
 								<label for="email">Email:</label><br /><input type="text" id="email" name="email" size="30" <?php if($reported) echo "disabled"; ?> /><br />
 								<label for="comment">Comment:</label><br /><textarea id="comment" name="comment" cols="22" rows="5" <?php if($reported) echo "disabled"; ?> ></textarea>
-							</p>						
+							</p>
 							<p><input type="submit" name="submit_feedback" value="submit error report" <?php if($reported) echo "disabled"; ?> /></p>
 						</form>
 					</td>
@@ -325,10 +326,10 @@ class Akismet {
     $this->verify_post_args($post_args);
     return ($this->call('submit-ham', $post_args, "{$this->api_key}.rest.akismet.com/1.1") != 'false');
   }
-  
+
   function verify_key() {
   	$sendKey = array('key' => $this->api_key);
-	return ($this->call('verify-key', $sendKey, "rest.akismet.com/1.1") != 'invalid');  
+	return ($this->call('verify-key', $sendKey, "rest.akismet.com/1.1") != 'invalid');
   }
 
   function verify_post_args($post_args) {
@@ -354,8 +355,8 @@ class Akismet {
     curl_setopt($http, CURLOPT_POSTFIELDS, $post_args);
     curl_setopt($http, CURLOPT_RETURNTRANSFER, 1);
 	curl_setopt($http, CURLOPT_USERAGENT, "User-Agent: Wordpress/".get_bloginfo('version')." | afdn_errorPage/$pluginVersion");
-    
-    # do HTTP 
+
+    # do HTTP
     $ret = curl_exec($http);
 
     # check error response
@@ -364,7 +365,7 @@ class Akismet {
 
     # close HTTP connection
     curl_close($http);
-	
+
     # return result
     return $ret;
   }
