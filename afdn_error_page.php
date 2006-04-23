@@ -13,7 +13,7 @@ Author URI: http://www.andrewferguson.net/
 
 
 Dunstan-style Error Page - A fuller featured 404 error page modeled from http://1976design.com/blog/error/
-Copyright (c) 2005 Andrew Ferguson
+Copyright (c) 2005-2006 Andrew Ferguson
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -32,27 +32,32 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
 function afdn_error_page_myOptionsSubpanel(){
-$pluginVersion = "1.1";
-$updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.inc?format=txt";
+$pluginVersion = "1.1"; 																		//Current Version of plugin
+$updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.inc?format=txt";	//Where to check for updates
 
 
 	
-	if (isset($_POST['info_update']) && (is_key_valid($_POST['akismetKey'])))
+	if (isset($_POST['info_update']) && (is_key_valid($_POST['akismetKey'])))	//If updates were submited, check to see if the API key is valid
 	{
 		
 		$results = array(	"name" => $_POST['name'],
 							"num_posts" => $_POST['num_posts'],
 							"accessed" => $_POST['accessed'],
 							"checkUpdate" => $_POST['checkUpdate'],
-							"akismetKey" => $_POST['akismetKey'],
-							
+							"akismetKey" => $_POST['akismetKey'],							
 							);
-		update_option("afdn_error_page", serialize($results));
+		update_option("afdn_error_page", serialize($results));					//If it is, go ahead and update the information, including the API key
 	}
-	elseif(isset($_POST['info_update']))
-		$keyInvalid = true;
-		
-	$getOptions = get_option("afdn_error_page");
+	elseif(isset($_POST['info_update'])){
+		$results = array(	"name" => $_POST['name'],
+							"num_posts" => $_POST['num_posts'],
+							"accessed" => $_POST['accessed'],
+							"checkUpdate" => $_POST['checkUpdate'],							
+							);
+		update_option("afdn_error_page", serialize($results));					//If it's not, update everything but the API key and....
+		$keyInvalid = true;														//...set a flag that the API key was invalid
+	}
+	$afdn_error_page_getOptions = get_option("afdn_error_page");								//Once everything has been written to the DB, get a new copy just to be sure nothing gets cached (that could be bad)
 	?>
 	
 	<div class=wrap>
@@ -60,60 +65,43 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 		<h2>Error Page</h2>
 			<fieldset name="management" class="options">
 				<legend><strong>Management</strong></legend>
-					Check for updates? <input name="checkUpdate" type="radio" value="1" <?php print($getOptions["checkUpdate"]==1?"checked":NULL)?> />Yes :: <input name="checkUpdate" type="radio" value="0" <?php print($getOptions["checkUpdate"]==0?"checked":NULL)?>/>No		
-					<?php if($getOptions["checkUpdate"]==1){
+					Check for updates? <input name="checkUpdate" type="radio" value="1" <?php print($afdn_error_page_getOptions["checkUpdate"]==1?"checked":NULL)?> />Yes :: <input name="checkUpdate" type="radio" value="0" <?php print($afdn_error_page_getOptions["checkUpdate"]==0?"checked":NULL)?>/>No		
+					<?php if($afdn_error_page_getOptions["checkUpdate"]==1){				//If set to 1, then updates will be checked for
 						echo "<br /><br />";
-						$currentVersion = file_get_contents($updateURL);
-						if($currentVersion == $pluginVersion){
+						$currentVersion = file_get_contents($updateURL);	//Get the latest version number
+						if($currentVersion == $pluginVersion){				//Version is current
 						  echo "You have the latest version.";
 						}
-						elseif($currentVersion > $pluginVersion){
+						elseif($currentVersion > $pluginVersion){			//Version is not current
 						  echo "You have version <strong>$pluginVersion</strong>, the current version is <strong>$currentVersion</strong>.<br />";
 						  echo "Download the latest version at <a href=\"http://dev.wp-plugins.org/file/dunstan-error-page/trunk/afdn_error_page.php\">http://dev.wp-plugins.org/file/dunstan-error-page/trunk/afdn_error_page.php</a>";
 						}
-						elseif($currentVersion < $pluginVersion){
+						elseif($currentVersion < $pluginVersion){			//Version is higher then current stable (i.e. Alpha/Beta version)
 							echo "Beta version, eh?";
-						}
-						
+						}	
 					}
 						?>
 			</fieldset>
-
+			
 			<fieldset name="configuration" class="options">
 			<legend><strong>Options</strong></legend>
-			<p>
-			Only three configuration options right now. Type in the name of the owner of the blog, how many posts you want displayed on the 404 page, and how the error page is reached.
-			You also need to set your 404 page to index.php?error=404. In apache you would add a line of code that looks similar to this: <code>ErrorDocument 404 "/index.php?error=404"</code>
-			<br />
-			If you don't have access to to you Apache config file or .htaccess file, of if you don't use Apache, you can use GET tags to send the information to the script. The tags are named "referer" and "requested".
-			</p><p>
-				Who is responsible for the egregious error: <input name="name" type="text" value="<?php echo $getOptions["name"]; ?>" /><br >
-				How many posts do you want displayed: <input name="num_posts" type="text" value="<?php echo $getOptions["num_posts"]; ?>" /><br />
-                How is this 404 page accessed:<br />
-                Directly (Default) <input name="accessed" type="radio" value="directly"
-                <?php
-                    if(!isset($getOptions["accessed"])||($getOptions["accessed"]=="directly")){
-                        echo " checked ";
-                    }
-                    ?>
-                /> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-               Redirect <input name="accessed" type="radio" value="redirect"
-                <?php
-                    if($getOptions["accessed"]=="redirect"){
-                        echo " checked ";
-                    }
-                ?>
-                />
-				</p>
+				<p>Only three configuration options right now. Type in the name of the owner of the blog, how many posts you want displayed on the 404 page, and how the error page is reached. You also need to set your 404 page to index.php?error=404. In apache you would add a line of code that looks similar to this: <code>ErrorDocument 404 "/index.php?error=404"</code>
+				<br />If you don't have access to your Apache config file or .htaccess file, of if you don't use Apache, you can use GET tags to send the information to the script. The tags are named "referer" and "requested".</p>
+				<p>Who is responsible for the egregious error: <input name="name" type="text" value="<?php echo $afdn_error_page_getOptions["name"]; ?>" />
+				<br />How many posts do you want displayed: <input name="num_posts" type="text" value="<?php echo $afdn_error_page_getOptions["num_posts"]; ?>" />
+				<br />How is this 404 page accessed:
+				<br />Directly (Default) <input name="accessed" type="radio" value="directly" <?php print($afdn_error_page_getOptions["accessed"]!="redirect"?" checked":NULL) ?> />
+				&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Redirect
+				<input name="accessed" type="radio" value="redirect" <?php print($afdn_error_page_getOptions["accessed"]=="redirect"?"checked":NULL) ?> /></p>
 			</fieldset>
+			
 			<fieldset name="akismetSettings" class="options">
 				<legend><strong>Akismet Settings</strong></legend>
-				<?php if($keyInvalid){ ?>
+				<?php if($keyInvalid){ //P.S. I took this from the Akismet plugin. It alerts the user if their key is invalid ?>
 					<p style="padding: .5em; background-color: #f33; color: #fff; font-weight: bold;"><?php _e('Your key appears invalid. Double-check it.'); ?></p>
 				<?php } ?>				
 				<p>
-				<p>Akismet API Key: <input name="akismetKey" type="text" value="<?php echo $getOptions["akismetKey"]; ?>" /></p>
-				
+				<p>WordPress.com API Key: <input name="akismetKey" type="text" value="<?php echo $afdn_error_page_getOptions["akismetKey"]; ?>" /> (<a href="http://faq.wordpress.com/2005/10/19/api-key/" target="_blank">What is this?</a>)</p>
 			</fieldset>
 			<div class="submit"><input type="submit" name="info_update" value="<?php _e('Update options', 'Localization name')
 			 ?>&raquo;" /></div>
@@ -121,34 +109,33 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 	</div> <?
 }
 
-
-
-function afdn_error_page_optionsPage(){
+function afdn_error_page_optionsPage(){						//Action function for adding the configuration panel to the Options Page
 	if(function_exists('add_options_page')){
 			add_options_page('Error Page', 'Error Page', 10, basename(__FILE__), 'afdn_error_page_myOptionsSubpanel');
 	}
 }
 
-add_action('admin_menu', 'afdn_error_page_optionsPage');
+add_action('admin_menu', 'afdn_error_page_optionsPage');	//Add Action for adding the options page to admin panel
 
-function is_comment_spam($name, $email, $comment) {
-	$getOptions = get_option("afdn_error_page");
-	if($getOptions['akismetKey'] == NULL)
-		return "You have not entered a valid key!";
+function is_comment_spam($name, $email, $comment) {					//Check to see if a submited error report could be spam
+	$afdn_error_page_getOptions = get_option("afdn_error_page");
+	
+	if($afdn_error_page_getOptions['akismetKey'] == NULL)							//See if the API key has been set
+		return "You have not entered a valid key!";					//If the API key isn't set, stop the checking process and just let the user know they don't have a key
 		
 	# populate comment information
 	$comment_data = array(
-		'user_ip'               => $_SERVER['REMOTE_ADDR'],
-		'user_agent'            => $_SERVER['HTTP_USER_AGENT'],
-    	'referrer'              => $_REQUEST['REFERER'],
-	    'comment_type'          => 'error_report',
-	    'comment_author'        => $name,
-	    'comment_author_email'  => $email,
-	    'comment_content'       => $comment,
+		'user_ip'               => $_SERVER['REMOTE_ADDR'],			//Submitters IP Address
+		'user_agent'            => $_SERVER['HTTP_USER_AGENT'],		//Submitters User Agent
+    	'referrer'              => $_REQUEST['REFERER'],			//Submitters Referer
+	    'comment_type'          => 'error_report',					//What type of 'comment' it is. Note: Akismet lets this be anything
+	    'comment_author'        => $name,							//Submitters name
+	    'comment_author_email'  => $email,							//Submitters email address
+	    'comment_content'       => $comment,						//Submitters actual comment
 	);
 
 	# create akismet handle
-	$ak = new Akismet($getOptions['akismetKey'], get_bloginfo('url'));
+	$ak = new Akismet($afdn_error_page_getOptions['akismetKey'], get_bloginfo('url'));
 
 	# return akismet result (true for spam, false for ham)
 	if($ak->check_comment($comment_data))
@@ -157,7 +144,7 @@ function is_comment_spam($name, $email, $comment) {
 		return "No, this is not spam";
 }
 
-function is_key_valid($keyID){
+function is_key_valid($keyID){							//Check the validity of the key
 	
 	//Create Akismet handle
 	$ak = new Akismet($keyID, get_bloginfo('url'));
@@ -169,33 +156,37 @@ function is_key_valid($keyID){
 		return false;
 }
 
-
+//This is the function that handles all the error reporting
 function afdn_error_page(){
 
-
+	/*Start transfering values from POST*/
 	$referer = $_POST["referer"];
 	$badpage = $_POST["badpage"];
 	
 	$name = $_POST["name"];
 	$email = $_POST["email"];
 	$comment = $_POST["comment"];
+	/*End transfering values from POST*/
 	
-	if(isset($_POST["submit_quick"])) $submit_quick = true;
-	if(isset($_POST["submit_feedback"])) $submit_feedback = true;
+	if(isset($_POST["submit_quick"])) $submit_quick = true;			//Is this a quick error report or...
+	if(isset($_POST["submit_feedback"])) $submit_feedback = true;	//Is this a detailed error report?
+
+	$siteURL = parse_url(get_settings('siteurl'));					//What is your actual site address?
+	$referedURL = parse_url($_SERVER['HTTP_REFERER']);				//What did the referer say your site address was?
 	
-	
-	if($submit_quick)
+	if($submit_quick)																//For a quick error report
 	{
 		$message = "A 404 error was recieved by ".$_SERVER['REMOTE_ADDR']." on ". date("r", time()).".\n";
 		$message .= "Referer: $referer\r\n";
 		$message .= "Bad Page: $badpage\r\n";
 		$message .= "User details: ".$_SERVER['HTTP_USER_AGENT']."\r\n";
-		if(preg_match('/'.urlencode(get_settings('siteurl')).'/', urlencode($_SERVER['HTTP_REFERER']))){
+
+		if(preg_match('/(www\.)?'.$referedURL['host'].'/', $siteURL['host'])){		//Check to make sure the referer at least appears to be coming from your site
 			mail(get_option('admin_email'), '['.get_option("blogname").'] 404 Quick Error Report', $message);
-			$reported = true;
+			$reported = true;														//Flag so that the user knows their report has been sent
 		}
 	}
-	elseif($submit_feedback)
+	elseif($submit_feedback)														//For a detailed error report
 	{
 		$message = "A 404 error was recieved by ".$_SERVER['REMOTE_ADDR']." on ". date("r", time()).".\n";
 		$message .= "Referer: $referer\r\n";
@@ -205,28 +196,23 @@ function afdn_error_page(){
 		$message .= "Email: $email\r\n";
 		$message .= "Comment: $comment\r\n";
 		$message .= "Spam: ".is_comment_spam($name, $email, $comment)."\r\n";
-		if(preg_match('/'.urlencode(get_settings('siteurl')).'/', urlencode($_SERVER['HTTP_REFERER']))){
+		if(preg_match('/(www\.)?'.$referedURL['host'].'/', $siteURL['host'])){		//Check to make sure the referer at least appears to be coming from your site
 			mail(get_option('admin_email'), '['.get_option("blogname").'] 404 Error Report', $message);
-			$reported = true;
+			$reported = true;														//Flag so that the user knows their report has been sent
 		}
 	}
 	else
 	{
-		$reported = false;
+		$reported = false;															//If a report is attempted to be filed, but didn't go through
 	}
 	
 	?>
 	
-	
-	
 	<?php get_header(); ?>
-	
-	
-	
+
 	<?php
-		$getOptions = get_option("afdn_error_page");
 		
-		if($getOptions["accessed"]=="redirect"){
+		if($afdn_error_page_getOptions["accessed"]=="redirect"){
 		  $httpReferer = $_GET['referer'];
 		  $requestURI = $_GET['requested'];
 	
@@ -238,20 +224,18 @@ function afdn_error_page(){
 		
 	?>
 		<div id="content" style = "padding: 20px">
-	
-					<?php if($reported){?>
-								<h3>Thank you for submitting an error report.</h3>				
-					<?php } ?>
-	
-					<p>For some reason, the page your trying to access doesn't exist. Hopefully the information below can be of some assistance - <?php echo $getOptions["name"]; ?>. </p>
-	
-					<table border="0">
-	  <tr>
-		<td valign="top" width = "50%">					<h2>Your options</h2>
+		<?php if($reported){?>
+			<h3>Thank you for submitting an error report.</h3>				
+		<?php } ?>
+			<p>For some reason, the page your trying to access doesn't exist. Hopefully the information below can be of some assistance - <?php print(isset($afdn_error_page_getOptions["name"])?$afdn_error_page_getOptions["name"]:"Mgmt"); ?>.</p>
+			<table border="0">
+				<tr>
+					<td valign="top" width = "50%">
+						<h2>Your options</h2>
 						<ol>
 							<li>Submit an <a href="#quick" title="Jump down to the error reports &#8595;">error report form</a> &#8595;</li>
 							<li>Go to the <a href="<?php echo get_settings('siteurl'); ?>" title="Go to the blog homepage">homepage</a></li>
-							<li>Read the last <?php echo $getOptions["num_posts"]; ?> blogs &#8594;</li>
+							<li>Read the last <?php echo $afdn_error_page_getOptions["num_posts"]; ?> blogs &#8594;</li>
 							<li>Search <?php echo get_settings('blogname'); ?> &#8595;</li>
 						</ol>
 						<p>
@@ -264,16 +248,18 @@ function afdn_error_page(){
 								</form>
 							</center>
 						</p>
-	</td>
-		<td width="0" valign="top">					<h2>Last <?php echo $getOptions["num_posts"]; ?> blog posts</h2>
+					</td>
+					<td width="0" valign="top">
+						<h2>Last <?php print(isset($afdn_error_page_getOptions["num_posts"])?$afdn_error_page_getOptions["num_posts"]:"5"); ?> blog posts</h2>
 						<ol>
-							<?php get_archives('postbypost', $getOptions["num_posts"], 'custom', '<li>', '</li>'); ?>
+							<?php get_archives('postbypost', isset($afdn_error_page_getOptions["num_posts"])?$afdn_error_page_getOptions["num_posts"]:5, 'custom', '<li>', '</li>'); ?>
 						</ol>
-	</td>
-	  </tr>
-	  <tr>
-		<td width="50%" valign="top">					<h2>Quick error report</h2>
-						<p>You can quickly report this missing page by clicking the button below <small>(it will reload this page and send <? $nameArray = split(" ", $getOptions["name"]); echo $nameArray[0]; ?> an email with the relevant details attached)</small>.</p>
+					</td>
+				</tr>
+				<tr>
+					<td width="50%" valign="top">
+						<h2>Quick error report</h2>
+						<p>You can quickly report this missing page by clicking the button below <small>(it will reload this page and send an email with the relevant details attached)</small>.</p>
 						<form method="post" action="">
 							<div>
 								<input type="hidden" name="referer" value="<?PHP echo $httpReferer; ?>" />
@@ -281,8 +267,9 @@ function afdn_error_page(){
 							</div>
 							<p><input type="submit" name="submit_quick" value="submit quick error report" <?php if($reported) echo "disabled"; ?> /></p>
 						</form>
-	</td>
-		<td width="50%" valign="top">					<h2>Feedback request</h2>
+					</td>
+					<td width="50%" valign="top">
+						<h2>Feedback request</h2>
 						<p>If you&#8217;d like some feedback about the content you are looking for, please fill in the form below and I&#8217;ll get back to you. <small>(The page you were after, and the referring page, will be sent automatically.)</small></p>
 						<form method="post" action="">
 							<div>
@@ -296,22 +283,21 @@ function afdn_error_page(){
 							</p>						
 							<p><input type="submit" name="submit_feedback" value="submit error report" <?php if($reported) echo "disabled"; ?> /></p>
 						</form>
-	</td>
-	  </tr>
-	</table>
-	
-	
+					</td>
+				</tr>
+			</table>
 		</div>
-	
-	<?php //get_sidebar(); ?>
-	
+
 	<?php get_footer(); ?>
-<?php
+
+	<?php
 }
-//add_filter('404_template', 'forceErrorPage');
+
+/*add_filter('404_template', 'forceErrorPage'); //For later ;-)
 function forceErrorPage(){
 	return "http://www.andrewferguson.net/wp-content/plugins/afdn_error_page.php?isError=1";
 }
+*/
 
 #Akismet class by Paul Duncan at http://www.pablotron.org/?cid=1485
 
