@@ -139,9 +139,9 @@ function is_comment_spam($name, $email, $comment) {					//Check to see if a subm
 
 	# return akismet result (true for spam, false for ham)
 	if($ak->check_comment($comment_data))
-		return "Yes, this is spam";
+		return true;
 	else
-		return "No, this is not spam";
+		return false;
 }
 
 function is_key_valid($keyID){							//Check the validity of the key
@@ -188,6 +188,7 @@ function afdn_error_page(){
 	}
 	elseif($submit_feedback)														//For a detailed error report
 	{
+		$isSpam = is_comment_spam($name, $email, $comment);
 		$message = "A 404 error was recieved by ".$_SERVER['REMOTE_ADDR']." on ". date("r", time()).".\n";
 		$message .= "Referer: $referer\r\n";
 		$message .= "Bad Page: $badpage\r\n";
@@ -195,9 +196,10 @@ function afdn_error_page(){
 		$message .= "Name: $name\r\n";
 		$message .= "Email: $email\r\n";
 		$message .= "Comment: $comment\r\n";
-		$message .= "Spam: ".is_comment_spam($name, $email, $comment)."\r\n";
+		$message .= "Spam: ".($isSpam==true?"Yes":"No")."\r\n";
 		if(preg_match('/(www\.)?'.$referedURL['host'].'/', $siteURL['host'])){		//Check to make sure the referer at least appears to be coming from your site
-			mail(get_option('admin_email'), '['.get_option("blogname").'] 404 Error Report', $message);
+			if(!$isSpam)
+				mail(get_option('admin_email'), '['.get_option("blogname").'] 404 Error Report', $message);
 			$reported = true;														//Flag so that the user knows their report has been sent
 		}
 	}
