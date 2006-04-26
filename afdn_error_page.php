@@ -106,10 +106,31 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 			<div class="submit"><input type="submit" name="info_update" value="<?php _e('Update options', 'Localization name')
 			 ?>&raquo;" /></div>
 		</form>
-		<fieldset name="spam" class="options">
-			<legend><strong>Spam</strong></legend>
-			<?php echo file_get_contents(dirname(__FILE__)."/afdn_error_page_spam.xml"); ?>
-		</fieldset>
+		</div>
+		<div class="wrap">
+			<h2>Last 14 Days</h2>
+			<ol id="spam-list" class="commentlist">
+			<?php 	$parseXML = new afdn_parseXML();
+					$tree = $parseXML->GetXMLTree(dirname(__FILE__)."/afdn_error_page_spam.xml");
+					for($i=0; $i<count($tree["ERROR"][0]["ITEM"]); $i++){
+						echo "<li id='comment-$i' ".($i%2==1?"class=\"alternate\"":NULL)."><p>";
+
+						echo "<strong>Name:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["USERNAME"][0]["VALUE"]." | ";
+						echo "<strong>Email:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["USEREMAIL"][0]["VALUE"]." | ";
+						echo "<strong>IP:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["REMOTEIP"][0]["VALUE"]." | ";
+						echo "<strong>Date/Time:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["DATETIME"][0]["VALUE"]."<br />\n";
+
+						echo "<strong>Referer:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["REFERER"][0]["VALUE"]." | ";
+						echo "<strong>Bad Page:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["BADPAGE"][0]["VALUE"]." | ";
+						echo "<strong>User-Agent:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["USERAGENT"][0]["VALUE"]."<br />\n";
+						
+						echo "<strong>Comment:</strong><br /> ".$tree["ERROR"][0]["ITEM"][$i]["COMMENT"][0]["VALUE"];
+						
+						echo "</p></li>\n";
+					}
+					
+					 ?>
+			</ol>
 	</div> <?
 }
 
@@ -454,9 +475,9 @@ class afdn_parseXML{
 			if (isset($vals[$i]['attributes'])) {
 			  $children[$vals[$i]['tag']][]['ATTRIBUTES'] = $vals[$i]['attributes'];
 			  $index = count($children[$vals[$i]['tag']])-1;
-			  $children[$vals[$i]['tag']][$index] = array_merge($children[$vals[$i]['tag']][$index],GetChildren($vals, $i));
+			  $children[$vals[$i]['tag']][$index] = array_merge($children[$vals[$i]['tag']][$index], afdn_parseXML::GetChildren($vals, $i));
 			} else {
-			  $children[$vals[$i]['tag']][] = GetChildren($vals, $i);
+			  $children[$vals[$i]['tag']][] = afdn_parseXML::GetChildren($vals, $i);
 			}
 			break; 
 		  /* End of node, return collected data */
@@ -488,10 +509,10 @@ class afdn_parseXML{
 	  if (isset($vals[$i]['attributes'])) {
 		$tree[$vals[$i]['tag']][]['ATTRIBUTES'] = $vals[$i]['attributes']; 
 		$index = count($tree[$vals[$i]['tag']])-1;
-		$tree[$vals[$i]['tag']][$index] =  array_merge($tree[$vals[$i]['tag']][$index], GetChildren($vals, $i));
+		$tree[$vals[$i]['tag']][$index] =  array_merge($tree[$vals[$i]['tag']][$index], afdn_parseXML::GetChildren($vals, $i));
 	  }
 	  else
-		$tree[$vals[$i]['tag']][] = GetChildren($vals, $i); 
+		$tree[$vals[$i]['tag']][] = afdn_parseXML::GetChildren($vals, $i); 
 	  
 	  return $tree; 
 	} 
