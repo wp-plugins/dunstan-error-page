@@ -37,7 +37,7 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 
 
 	
-	if (isset($_POST['info_update']) && (is_key_valid($_POST['akismetKey'])))	//If updates were submited, check to see if the API key is valid
+	if (isset($_POST['info_update']) && (afdn_is_key_valid($_POST['akismetKey'])))	//If updates were submited, check to see if the API key is valid
 	{
 		
 		$results = array(	"name" => $_POST['name'],
@@ -106,6 +106,10 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 			<div class="submit"><input type="submit" name="info_update" value="<?php _e('Update options', 'Localization name')
 			 ?>&raquo;" /></div>
 		</form>
+		<fieldset name="spam" class="options">
+			<legend><strong>Spam</strong></legend>
+			<?php echo file_get_contents(dirname(__FILE__)."/afdn_error_page_spam.xml"); ?>
+		</fieldset>
 	</div> <?
 }
 
@@ -117,7 +121,7 @@ function afdn_error_page_optionsPage(){						//Action function for adding the co
 
 add_action('admin_menu', 'afdn_error_page_optionsPage');	//Add Action for adding the options page to admin panel
 
-function is_comment_spam($name, $email, $comment) {					//Check to see if a submited error report could be spam
+function afdn_is_comment_spam($name, $email, $comment) {					//Check to see if a submited error report could be spam
 	$afdn_error_page_getOptions = get_option("afdn_error_page");
 	
 	if($afdn_error_page_getOptions['akismetKey'] == NULL)							//See if the API key has been set
@@ -135,7 +139,7 @@ function is_comment_spam($name, $email, $comment) {					//Check to see if a subm
 	);
 
 	# create akismet handle
-	$ak = new Akismet($afdn_error_page_getOptions['akismetKey'], get_bloginfo('url'));
+	$ak = new afdn_Akismet($afdn_error_page_getOptions['akismetKey'], get_bloginfo('url'));
 
 	# return akismet result (true for spam, false for ham)
 	if($ak->check_comment($comment_data))
@@ -144,10 +148,10 @@ function is_comment_spam($name, $email, $comment) {					//Check to see if a subm
 		return false;
 }
 
-function is_key_valid($keyID){							//Check the validity of the key
+function afdn_is_key_valid($keyID){							//Check the validity of the key
 	
 	//Create Akismet handle
-	$ak = new Akismet($keyID, get_bloginfo('url'));
+	$ak = new afdn_Akismet($keyID, get_bloginfo('url'));
 	
 	//Check key
 	if($ak->verify_key())
@@ -188,7 +192,7 @@ function afdn_error_page(){
 	}
 	elseif($submit_feedback)														//For a detailed error report
 	{
-		$isSpam = is_comment_spam($name, $email, $comment);
+		$isSpam = afdn_is_comment_spam($name, $email, $comment);
 		$message = "A 404 error was recieved by ".$_SERVER['REMOTE_ADDR']." on ". date("r", time()).".\n";
 		$message .= "Referer: $referer\r\n";
 		$message .= "Bad Page: $badpage\r\n";
@@ -338,10 +342,10 @@ function forceErrorPage(){
 
 #Akismet class by Paul Duncan at http://www.pablotron.org/?cid=1485
 
-class Akismet {
+class afdn_Akismet {
   var $version;
 
-  function Akismet($api_key, $blog) {
+  function afdn_Akismet($api_key, $blog) {
     $this->api_key = $api_key;
     $this->blog = $blog;
 
@@ -403,6 +407,111 @@ class Akismet {
 		return $response[1];
 	
 		}
+}
+
+class afdn_parseXML{
+	//XML Parsing
+	function GetChildren($vals, &$i) 
+	{ 
+	  $children = array();     // Contains node data
+	  
+	  /* Node has CDATA before it's children */
+	  if (isset($vals[$i]['value'])) 
+		$children['VALUE'] = $vals[$i]['value']; 
+	  
+	  /* Loop through children */
+	  while (++$i < count($vals))
+	  { 
+		switch ($vals[$i]['type']) 
+		{ 
+		  /* Node has CDATA after one of it's children 
+			(Add to cdata found before if this is the case) */
+		  case 'cdata': 
+			if (isset($children['VALUE']))
+			  $children['VALUE'] .= $vals[$i]['value']; 
+			else
+			  $children['VALUE'] = $vals[$i]['value']; 
+			break;
+		  /* At end of current branch */ 
+		  case 'complete': 
+			if (isset($vals[$i]['attributes'])) {
+			  $children[$vals[$i]['tag']][]['ATTRIBUTES'] = $vals[$i]['attributes'];
+			  $index = count($children[$vals[$i]['tag']])-1;
+	
+			  if (isset($vals[$i]['value'])) 
+				$children[$vals[$i]['tag']][$index]['VALUE'] = $vals[$i]['value']; 
+			  else
+				$children[$vals[$i]['tag']][$index]['VALUE'] = ''; 
+			} else {
+			  if (isset($vals[$i]['value'])) 
+				$children[$vals[$i]['tag']][]['VALUE'] = $vals[$i]['value']; 
+			  else
+				$children[$vals[$i]['tag']][]['VALUE'] = ''; 
+			}
+			break; 
+		  /* Node has more children */
+		  case 'open': 
+			if (isset($vals[$i]['attributes'])) {
+			  $children[$vals[$i]['tag']][]['ATTRIBUTES'] = $vals[$i]['attributes'];
+			  $index = count($children[$vals[$i]['tag']])-1;
+			  $children[$vals[$i]['tag']][$index] = array_merge($children[$vals[$i]['tag']][$index],GetChildren($vals, $i));
+			} else {
+			  $children[$vals[$i]['tag']][] = GetChildren($vals, $i);
+			}
+			break; 
+		  /* End of node, return collected data */
+		  case 'close': 
+			return $children; 
+		} 
+	  } 
+	} 
+	
+	/* Function will attempt to open the xmlloc as a local file, on fail it will attempt to open it as a web link */
+	function GetXMLTree($xmlloc) 
+	{ 
+	  //if (file_exists($xmlloc))
+		$data = implode('', file($xmlloc)); 
+	  /*else {
+		$fp = fopen($xmlloc,'rb');
+		$data = fread($fp, 4096);
+		fclose($fp);
+	  }*/
+	
+	  $parser = xml_parser_create('ISO-8859-1');
+	  xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1); 
+	  xml_parse_into_struct($parser, $data, $vals, $index); 
+	  xml_parser_free($parser); 
+	
+	  $tree = array(); 
+	  $i = 0; 
+	  
+	  if (isset($vals[$i]['attributes'])) {
+		$tree[$vals[$i]['tag']][]['ATTRIBUTES'] = $vals[$i]['attributes']; 
+		$index = count($tree[$vals[$i]['tag']])-1;
+		$tree[$vals[$i]['tag']][$index] =  array_merge($tree[$vals[$i]['tag']][$index], GetChildren($vals, $i));
+	  }
+	  else
+		$tree[$vals[$i]['tag']][] = GetChildren($vals, $i); 
+	  
+	  return $tree; 
+	} 
+	
+	/* Used to display detailed information about an array */
+	function printa($obj) {
+	  global $__level_deep;
+	  if (!isset($__level_deep)) $__level_deep = array();
+	
+	  if (is_object($obj))
+		print '[obj]';
+	  elseif (is_array($obj)) {
+		foreach(array_keys($obj) as $keys) {
+		  array_push($__level_deep, "[".$keys."]");
+		  printa($obj[$keys]);
+		  array_pop($__level_deep);
+		}
+	  }
+	  else print implode(" ",$__level_deep)." = $obj";
+	}
 }
 
 ?>
