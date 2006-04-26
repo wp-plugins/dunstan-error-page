@@ -3,7 +3,7 @@
 Plugin Name: Dunstan-style Error Page
 Plugin URI: http://www.andrewferguson.net/wordpress-plugins/#errorpage
 Plugin Description: A fuller featured 404 error page modeled from http://1976design.com/blog/error/
-Version: 1.1
+Version: 1.2
 Author: Andrew Ferguson
 Author URI: http://www.andrewferguson.net/
 */
@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
 function afdn_error_page_myOptionsSubpanel(){
-$pluginVersion = "1.1"; 																		//Current Version of plugin
+$pluginVersion = "1.2"; 																		//Current Version of plugin
 $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.inc?format=txt";	//Where to check for updates
 
 
@@ -200,6 +200,40 @@ function afdn_error_page(){
 		if(preg_match('/(www\.)?'.$referedURL['host'].'/', $siteURL['host'])){		//Check to make sure the referer at least appears to be coming from your site
 			if(!$isSpam)
 				mail(get_option('admin_email'), '['.get_option("blogname").'] 404 Error Report', $message);
+			else{
+				$spamXML = dirname(__FILE__)."/afdn_error_page_spam.xml";		//Where to save the suspect spam too
+								
+				if(file_exists($spamXML))
+					$existingErrors = file($spamXML);
+				
+				$messageXML = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n";
+				$messageXML .= "<error>\n";
+				
+				if(isset($existingErrors)){
+					for($i=2; $i<(count($existingErrors)-1); $i++)
+						$messageXML .= $existingErrors[$i];
+				}
+							
+				$messageXML .= "<item>\n";
+				$messageXML .= "<errorCode>404</errorCode>\n";
+				$messageXML .= "<remoteIP>".$_SERVER['REMOTE_ADDR']."</remoteIP>\n";
+				$messageXML .= "<dateTime>". date("r", time())."</dateTime>\n";
+				$messageXML .= "<referer>$referer</referer>\n";
+				$messageXML .= "<badPage>$badpage</badPage>\n";
+				$messageXML .= "<userAgent>".$_SERVER['HTTP_USER_AGENT']."</userAgent>\n";
+				$messageXML .= "<userName>$name</userName>\n";
+				$messageXML .= "<userEmail>$email</userEmail>\n";
+				$messageXML .= "<comment>\n<![CDATA[\n$comment\n]]>\n</comment>\n";
+				$messageXML .= "<isSpam>".($isSpam==true?"Yes":"No")."</isSpam>\n";
+				$messageXML .= "</item>\n";
+				
+				$messageXML .= "</error>\n";
+				
+				$fileHandle = fopen($spamXML, "w");
+				fwrite($fileHandle, $messageXML);
+				fclose($fileHandle);
+			}
+				
 			$reported = true;														//Flag so that the user knows their report has been sent
 		}
 	}
@@ -316,22 +350,22 @@ class Akismet {
 
   function check_comment($post_args) {
     $this->verify_post_args($post_args);
-    return ($this->call('comment-check', $post_args, "{$this->api_key}.rest.akismet.com/1.1") != 'false');
+    return ($this->call('/1.1/comment-check', $post_args, "{$this->api_key}.rest.akismet.com") != 'false');
   }
 
   function submit_spam($post_args) {
     $this->verify_post_args($post_args);
-    return ($this->call('submit-spam', $post_args, "{$this->api_key}.rest.akismet.com/1.1") != 'false');
+    return ($this->call('/1.1/submit-spam', $post_args, "{$this->api_key}.rest.akismet.com") != 'false');
   }
 
   function submit_ham($post_args) {
     $this->verify_post_args($post_args);
-    return ($this->call('submit-ham', $post_args, "{$this->api_key}.rest.akismet.com/1.1") != 'false');
+    return ($this->call('/1.1/submit-ham', $post_args, "{$this->api_key}.rest.akismet.com") != 'false');
   }
   
   function verify_key() {
   	$sendKey = array('key' => $this->api_key);
-	return ($this->call('verify-key', $sendKey, "rest.akismet.com/1.1") != 'invalid');  
+	return ($this->call('/1.1/verify-key', $sendKey, "rest.akismet.com") != 'invalid');  
   }
 
   function verify_post_args($post_args) {
@@ -341,36 +375,34 @@ class Akismet {
         die("missing required akismet key '$key'");
   }
 
-  function call($meth, $post_args, $host) {
-    # build post URL
-    $url = "http://$host/$meth";
-	//{$this->api_key}.rest.akismet.com/1.1
-
-    # add blog to post args
-    $post_args['blog'] = $this->blog;
-
-    # init HTTP handle
-    $http = curl_init($url);
-
-    # init HTTP handle
-    curl_setopt($http, CURLOPT_POST, 1);
-    curl_setopt($http, CURLOPT_POSTFIELDS, $post_args);
-    curl_setopt($http, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($http, CURLOPT_USERAGENT, "User-Agent: Wordpress/".get_bloginfo('version')." | afdn_errorPage/$pluginVersion");
-    
-    # do HTTP 
-    $ret = curl_exec($http);
-
-    # check error response
-    if ($err_str = curl_error($http))
-      die("CURL Error: $err_str");
-
-    # close HTTP connection
-    curl_close($http);
+	function call($meth, $post_args, $host, $port = 80) {
 	
-    # return result
-    return $ret;
-  }
+		$post_args['blog'] = $this->blog;
+
+		foreach($post_args as $key => $value){
+			$http_content .= $key."=".urlencode($value)."&";
+		}
+		$http_content = rtrim($http_content, "&");
+		
+		$http_request  = "POST $meth HTTP/1.0\r\n";
+		$http_request .= "Host: $host\r\n";
+		$http_request .= "Content-Type: application/x-www-form-urlencoded; charset=" . get_settings('blog_charset') . "\r\n";
+		$http_request .= "Content-Length: " . strlen($http_content) . "\r\n";
+		$http_request .= "User-Agent: Wordpress/".get_bloginfo('version')." | afdn_errorPage/1.2\r\n";
+		$http_request .= "\r\n";
+		$http_request .= $http_content;
+
+		$response = '';
+		if( false !== ( $fs = fsockopen($host, $port, $errno, $errstr, 3) ) ) {
+			fwrite($fs, $http_request);
+			while ( !feof($fs) )
+				$response .= fgets($fs, 1160); // One TCP-IP packet
+			fclose($fs);
+			$response = explode("\r\n\r\n", $response, 2);
+		}
+		return $response[1];
+	
+		}
 }
 
 ?>
