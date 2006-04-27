@@ -57,7 +57,36 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 		update_option("afdn_error_page", serialize($results));					//If it's not, update everything but the API key and....
 		$keyInvalid = true;														//...set a flag that the API key was invalid
 	}
-	$afdn_error_page_getOptions = get_option("afdn_error_page");				//Once everything has been written to the DB, get a new copy just to be sure nothing gets cached (that could be bad)
+	
+		$afdn_error_page_getOptions = get_option("afdn_error_page");				//Once everything has been written to the DB, get a new copy just to be sure nothing gets cached (that could be bad)
+	
+	if(isset($_POST["unspam"])){
+		$parseXML = new afdn_parseXML();
+		$tree = $parseXML->GetXMLTree(dirname(__FILE__)."/afdn_error_page_spam.xml");
+		
+		foreach($_POST["not_spam"] as $spam_id){
+				# populate comment information
+				$comment_data = array(
+					'user_ip'               => $tree["ERROR"][0]["ITEM"][$spam_id]["REMOTEIP"][0]["VALUE"],
+					'user_agent'            => $tree["ERROR"][0]["ITEM"][$spam_id]["USERAGENT"][0]["VALUE"],
+					'referrer'              => $tree["ERROR"][0]["ITEM"][$spam_id]["REFERER"][0]["VALUE"],
+					'comment_type'          => 'error_report',
+					'comment_author'        => $tree["ERROR"][0]["ITEM"][$spam_id]["USERNAME"][0]["VALUE"],
+					'comment_author_email'  => $tree["ERROR"][0]["ITEM"][$spam_id]["USEREMAIL"][0]["VALUE"],
+					'comment_content'       => $tree["ERROR"][0]["ITEM"][$spam_id]["COMMENT"][0]["VALUE"],
+				);
+			
+				# create akismet handle
+				$ak = new afdn_Akismet($afdn_error_page_getOptions['akismetKey'], get_bloginfo('url'));
+			
+				# return akismet result (true for spam, false for ham)
+				//print_r($comment_data);
+				$ak->submit_ham($comment_data);
+		}
+		
+		
+	}
+
 	?>
 	
 	<div class=wrap>
@@ -109,6 +138,7 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 		</div>
 		<div class="wrap">
 			<h2>Last 14 Days</h2>
+			<form method="post">
 			<ol id="spam-list" class="commentlist">
 			<?php 	$parseXML = new afdn_parseXML();
 					$tree = $parseXML->GetXMLTree(dirname(__FILE__)."/afdn_error_page_spam.xml");
@@ -126,11 +156,18 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 						
 						echo "<strong>Comment:</strong><br /> ".$tree["ERROR"][0]["ITEM"][$i]["COMMENT"][0]["VALUE"];
 						
-						echo "</p></li>\n";
+						echo "</p>";
+						
+						echo "<label for=\"spam-$i\"><input type=\"checkbox\" id=\"spam-$i\" name=\"not_spam[]\" value=\"$i\" />Not Spam</label>";
+						
+						echo "</li>\n";
 					}
 					
 					 ?>
 			</ol>
+			<div class="submit"><input type="submit" name="unspam" value="<?php _e('Not Spam', 'Localization name')
+			 ?>&raquo;" /></div>
+			</form>
 	</div> <?
 }
 
@@ -425,6 +462,7 @@ class afdn_Akismet {
 			fclose($fs);
 			$response = explode("\r\n\r\n", $response, 2);
 		}
+		//print_r($response);
 		return $response[1];
 	
 		}
