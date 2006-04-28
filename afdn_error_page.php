@@ -66,22 +66,31 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 		foreach($_POST["not_spam"] as $spam_id){
 				# populate comment information
 				$comment_data = array(
-					'user_ip'               => $tree["ERROR"][0]["ITEM"][$spam_id]["REMOTEIP"][0]["VALUE"],
-					'user_agent'            => $tree["ERROR"][0]["ITEM"][$spam_id]["USERAGENT"][0]["VALUE"],
-					'referrer'              => $tree["ERROR"][0]["ITEM"][$spam_id]["REFERER"][0]["VALUE"],
+					'user_ip'               => $spamArray[$spam_id]["remoteIP"],
+					'user_agent'            => $spamArray[$spam_id]["userAgent"],
+					'referrer'              => $spamArray[$spam_id]["referer"],
 					'comment_type'          => 'error_report',
-					'comment_author'        => $tree["ERROR"][0]["ITEM"][$spam_id]["USERNAME"][0]["VALUE"],
-					'comment_author_email'  => $tree["ERROR"][0]["ITEM"][$spam_id]["USEREMAIL"][0]["VALUE"],
-					'comment_content'       => $tree["ERROR"][0]["ITEM"][$spam_id]["COMMENT"][0]["VALUE"],
+					'comment_author'        => $spamArray[$spam_id]["userName"],
+					'comment_author_email'  => $spamArray[$spam_id]["userEmail"],
+					'comment_content'       => $spamArray[$spam_id]["comment"],
 				);
-			
+						
 				# create akismet handle
 				$ak = new afdn_Akismet($afdn_error_page_getOptions['akismetKey'], get_bloginfo('url'));
 			
 				# return akismet result (true for spam, false for ham)
-				//print_r($comment_data);
+				
+				$j = 0;
 				if($ak->submit_ham($comment_data))
-					$tree["ERROR"][0]["ITEM"][$spam_id]["ISSPAM"][0]["VALUE"] = "No";
+					foreach($spamArray as $key => $value){
+						if($spam_id != $key){
+							$newSpamArray[$j] = $spamArray[$key];
+							$j++;
+						}
+						
+					}
+					update_option("afdn_error_page_spam", serialize($newSpamArray));
+				}
 		
 		}
 		
@@ -166,7 +175,6 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 					
 					 ?>
 			</ol>
-			<?php print_r($spamArray); ?>
 			<div class="submit"><input type="submit" name="unspam" value="<?php _e('Not Spam', 'Localization name')
 			 ?>&raquo;" /></div>
 			</form>
