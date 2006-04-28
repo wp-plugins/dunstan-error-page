@@ -61,8 +61,7 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 		$afdn_error_page_getOptions = get_option("afdn_error_page");				//Once everything has been written to the DB, get a new copy just to be sure nothing gets cached (that could be bad)
 	
 	if(isset($_POST["unspam"])){
-		$parseXML = new afdn_parseXML();
-		$tree = $parseXML->GetXMLTree(dirname(__FILE__)."/afdn_error_page_spam.xml");
+		$spamArray = get_option("afdn_error_page_spam");
 		
 		foreach($_POST["not_spam"] as $spam_id){
 				# populate comment information
@@ -81,9 +80,10 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 			
 				# return akismet result (true for spam, false for ham)
 				//print_r($comment_data);
-				$ak->submit_ham($comment_data);
-		}
+				if($ak->submit_ham($comment_data))
+					$tree["ERROR"][0]["ITEM"][$spam_id]["ISSPAM"][0]["VALUE"] = "No";
 		
+		}
 		
 	}
 
@@ -140,31 +140,33 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 			<h2>Last 14 Days</h2>
 			<form method="post">
 			<ol id="spam-list" class="commentlist">
-			<?php 	$parseXML = new afdn_parseXML();
-					$tree = $parseXML->GetXMLTree(dirname(__FILE__)."/afdn_error_page_spam.xml");
-					for($i=0; $i<count($tree["ERROR"][0]["ITEM"]); $i++){
-						echo "<li id='comment-$i' ".($i%2==1?"class=\"alternate\"":NULL)."><p>";
-
-						echo "<strong>Name:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["USERNAME"][0]["VALUE"]." | ";
-						echo "<strong>Email:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["USEREMAIL"][0]["VALUE"]." | ";
-						echo "<strong>IP:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["REMOTEIP"][0]["VALUE"]." | ";
-						echo "<strong>Date/Time:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["DATETIME"][0]["VALUE"]."<br />\n";
-
-						echo "<strong>Referer:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["REFERER"][0]["VALUE"]." | ";
-						echo "<strong>Bad Page:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["BADPAGE"][0]["VALUE"]." | ";
-						echo "<strong>User-Agent:</strong> ".$tree["ERROR"][0]["ITEM"][$i]["USERAGENT"][0]["VALUE"]."<br />\n";
+			<?php 	$spamArray = get_option("afdn_error_page_spam");
+					for($i=0; $i<count($spamArray); $i++){
 						
-						echo "<strong>Comment:</strong><br /> ".$tree["ERROR"][0]["ITEM"][$i]["COMMENT"][0]["VALUE"];
-						
-						echo "</p>";
-						
-						echo "<label for=\"spam-$i\"><input type=\"checkbox\" id=\"spam-$i\" name=\"not_spam[]\" value=\"$i\" />Not Spam</label>";
-						
-						echo "</li>\n";
+							echo "<li id='comment-$i' ".($i%2==1?"class=\"alternate\"":NULL)."><p>";
+	
+							echo "<strong>Name:</strong> ".$spamArray[$i]["userName"]." | ";
+							echo "<strong>Email:</strong> ".$spamArray[$i]["userEmail"]." | ";
+							echo "<strong>IP:</strong> ".$spamArray[$i]["remoteIP"]." | ";
+							echo "<strong>Date/Time:</strong> ".$spamArray[$i]["dateTime"]."<br />\n";
+	
+							echo "<strong>Referer:</strong> ".$spamArray[$i]["referer"]." | ";
+							echo "<strong>Bad Page:</strong> ".$spamArray[$i]["badPage"]." | ";
+							echo "<strong>User-Agent:</strong> ".$spamArray[$i]["userAgent"]."<br />\n";
+							
+							echo "<strong>Comment:</strong><br /> ".$spamArray[$i]["comment"];
+							
+							echo "</p>";
+							
+							echo "<label for=\"spam-$i\"><input type=\"checkbox\" id=\"spam-$i\" name=\"not_spam[]\" value=\"$i\" />Not Spam</label>";
+							
+							echo "</li>\n";
+					
 					}
 					
 					 ?>
 			</ol>
+			<?php print_r($spamArray); ?>
 			<div class="submit"><input type="submit" name="unspam" value="<?php _e('Not Spam', 'Localization name')
 			 ?>&raquo;" /></div>
 			</form>
@@ -263,37 +265,27 @@ function afdn_error_page(){
 			if(!$isSpam)
 				mail(get_option('admin_email'), '['.get_option("blogname").'] 404 Error Report', $message);
 			else{
-				$spamXML = dirname(__FILE__)."/afdn_error_page_spam.xml";		//Where to save the suspect spam too
-								
-				if(file_exists($spamXML))
-					$existingErrors = file($spamXML);
+				$spamArray = get_option("afdn_error_page_spam");
 				
-				$messageXML = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n";
-				$messageXML .= "<error>\n";
 				
-				if(isset($existingErrors)){
-					for($i=2; $i<(count($existingErrors)-1); $i++)
-						$messageXML .= $existingErrors[$i];
-				}
+				if(is_array($spamArray))
+					$i = count($spamArray);
+				else
+					$i = 0;
 							
-				$messageXML .= "<item>\n";
-				$messageXML .= "<errorCode>404</errorCode>\n";
-				$messageXML .= "<remoteIP>".$_SERVER['REMOTE_ADDR']."</remoteIP>\n";
-				$messageXML .= "<dateTime>". date("r", time())."</dateTime>\n";
-				$messageXML .= "<referer>$referer</referer>\n";
-				$messageXML .= "<badPage>$badpage</badPage>\n";
-				$messageXML .= "<userAgent>".$_SERVER['HTTP_USER_AGENT']."</userAgent>\n";
-				$messageXML .= "<userName>$name</userName>\n";
-				$messageXML .= "<userEmail>$email</userEmail>\n";
-				$messageXML .= "<comment>\n<![CDATA[\n$comment\n]]>\n</comment>\n";
-				$messageXML .= "<isSpam>".($isSpam==true?"Yes":"No")."</isSpam>\n";
-				$messageXML .= "</item>\n";
+				$spamArray[$i] = array(	"errorCode" => "404",
+											"remoteIP" => $_SERVER['REMOTE_ADDR'],
+											"dateTime" => date("r", time()),
+											"referer" => $referer,
+											"badPage" => $badpage,
+											"userAgent" => $_SERVER['HTTP_USER_AGENT'],
+											"userName" => $name,
+											"userEmail" => $email,
+											"comment" => $comment,
+											"isSpam" => true,
+										);
 				
-				$messageXML .= "</error>\n";
-				
-				$fileHandle = fopen($spamXML, "w");
-				fwrite($fileHandle, $messageXML);
-				fclose($fileHandle);
+				update_option("afdn_error_page_spam", serialize($spamArray));
 			}
 				
 			$reported = true;														//Flag so that the user knows their report has been sent
@@ -467,110 +459,4 @@ class afdn_Akismet {
 	
 		}
 }
-
-class afdn_parseXML{
-	//XML Parsing
-	function GetChildren($vals, &$i) 
-	{ 
-	  $children = array();     // Contains node data
-	  
-	  /* Node has CDATA before it's children */
-	  if (isset($vals[$i]['value'])) 
-		$children['VALUE'] = $vals[$i]['value']; 
-	  
-	  /* Loop through children */
-	  while (++$i < count($vals))
-	  { 
-		switch ($vals[$i]['type']) 
-		{ 
-		  /* Node has CDATA after one of it's children 
-			(Add to cdata found before if this is the case) */
-		  case 'cdata': 
-			if (isset($children['VALUE']))
-			  $children['VALUE'] .= $vals[$i]['value']; 
-			else
-			  $children['VALUE'] = $vals[$i]['value']; 
-			break;
-		  /* At end of current branch */ 
-		  case 'complete': 
-			if (isset($vals[$i]['attributes'])) {
-			  $children[$vals[$i]['tag']][]['ATTRIBUTES'] = $vals[$i]['attributes'];
-			  $index = count($children[$vals[$i]['tag']])-1;
-	
-			  if (isset($vals[$i]['value'])) 
-				$children[$vals[$i]['tag']][$index]['VALUE'] = $vals[$i]['value']; 
-			  else
-				$children[$vals[$i]['tag']][$index]['VALUE'] = ''; 
-			} else {
-			  if (isset($vals[$i]['value'])) 
-				$children[$vals[$i]['tag']][]['VALUE'] = $vals[$i]['value']; 
-			  else
-				$children[$vals[$i]['tag']][]['VALUE'] = ''; 
-			}
-			break; 
-		  /* Node has more children */
-		  case 'open': 
-			if (isset($vals[$i]['attributes'])) {
-			  $children[$vals[$i]['tag']][]['ATTRIBUTES'] = $vals[$i]['attributes'];
-			  $index = count($children[$vals[$i]['tag']])-1;
-			  $children[$vals[$i]['tag']][$index] = array_merge($children[$vals[$i]['tag']][$index], afdn_parseXML::GetChildren($vals, $i));
-			} else {
-			  $children[$vals[$i]['tag']][] = afdn_parseXML::GetChildren($vals, $i);
-			}
-			break; 
-		  /* End of node, return collected data */
-		  case 'close': 
-			return $children; 
-		} 
-	  } 
-	} 
-	
-	/* Function will attempt to open the xmlloc as a local file, on fail it will attempt to open it as a web link */
-	function GetXMLTree($xmlloc) 
-	{ 
-	  //if (file_exists($xmlloc))
-		$data = implode('', file($xmlloc)); 
-	  /*else {
-		$fp = fopen($xmlloc,'rb');
-		$data = fread($fp, 4096);
-		fclose($fp);
-	  }*/
-	
-	  $parser = xml_parser_create('ISO-8859-1');
-	  xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1); 
-	  xml_parse_into_struct($parser, $data, $vals, $index); 
-	  xml_parser_free($parser); 
-	
-	  $tree = array(); 
-	  $i = 0; 
-	  
-	  if (isset($vals[$i]['attributes'])) {
-		$tree[$vals[$i]['tag']][]['ATTRIBUTES'] = $vals[$i]['attributes']; 
-		$index = count($tree[$vals[$i]['tag']])-1;
-		$tree[$vals[$i]['tag']][$index] =  array_merge($tree[$vals[$i]['tag']][$index], afdn_parseXML::GetChildren($vals, $i));
-	  }
-	  else
-		$tree[$vals[$i]['tag']][] = afdn_parseXML::GetChildren($vals, $i); 
-	  
-	  return $tree; 
-	} 
-	
-	/* Used to display detailed information about an array */
-	function printa($obj) {
-	  global $__level_deep;
-	  if (!isset($__level_deep)) $__level_deep = array();
-	
-	  if (is_object($obj))
-		print '[obj]';
-	  elseif (is_array($obj)) {
-		foreach(array_keys($obj) as $keys) {
-		  array_push($__level_deep, "[".$keys."]");
-		  printa($obj[$keys]);
-		  array_pop($__level_deep);
-		}
-	  }
-	  else print implode(" ",$__level_deep)." = $obj";
-	}
-}
-
 ?>
