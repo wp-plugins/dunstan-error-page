@@ -66,36 +66,53 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 		foreach($_POST["not_spam"] as $spam_id){
 				# populate comment information
 				$comment_data = array(
-					'user_ip'               => $spamArray[$spam_id]["remoteIP"],
-					'user_agent'            => $spamArray[$spam_id]["userAgent"],
-					'referrer'              => $spamArray[$spam_id]["referer"],
-					'comment_type'          => 'error_report',
-					'comment_author'        => $spamArray[$spam_id]["userName"],
-					'comment_author_email'  => $spamArray[$spam_id]["userEmail"],
-					'comment_content'       => $spamArray[$spam_id]["comment"],
-				);
+										'user_ip'               => $spamArray[$spam_id]["remoteIP"],
+										'user_agent'            => $spamArray[$spam_id]["userAgent"],
+										'referrer'              => $spamArray[$spam_id]["referer"],
+										'comment_type'          => 'error_report',
+										'comment_author'        => $spamArray[$spam_id]["userName"],
+										'comment_author_email'  => $spamArray[$spam_id]["userEmail"],
+										'comment_content'       => $spamArray[$spam_id]["comment"],
+									);
 						
 				# create akismet handle
 				$ak = new afdn_Akismet($afdn_error_page_getOptions['akismetKey'], get_bloginfo('url'));
-			
-				# return akismet result (true for spam, false for ham)
-				
+		
 				$j = 0;
-				if($ak->submit_ham($comment_data))
+				if($ak->submit_ham($comment_data)){
 					foreach($spamArray as $key => $value){
 						if($spam_id != $key){
 							$newSpamArray[$j] = $spamArray[$key];
 							$j++;
 						}
-						
 					}
 					update_option("afdn_error_page_spam", serialize($newSpamArray));
 				}
-		
+			}
+			echo '<div id="message" class="updated fade"><p>Ham reported.</p></div>';
 		}
-		
+	if(isset($_POST["deleteAll"])){
+		update_option("afdn_error_page_spam", NULL);
+		echo '<div id="message" class="updated fade"><p>All spam deleted.</p></div>';
 	}
-
+		
+	if(isset($_GET["isSpam"])){
+		$ak = new afdn_Akismet($afdn_error_page_getOptions['akismetKey'], get_bloginfo('url'));
+		
+		$comment_data = array(
+										'user_ip'               => $_GET["remoteip"],
+										'user_agent'            => $_GET["useragent"],
+										'referrer'              => $_GET["referer"],
+										'comment_type'          => 'error_report',
+										'comment_author'        => $_GET["userbame"],
+										'comment_author_email'  => $_GET["useremail"],
+										'comment_content'       => $_GET["comment"],
+									);
+		if($ak->submit_spam($comment_data)){
+			echo '<div id="message" class="updated fade"><p>Spam submited.</p></div>';
+		}
+	
+	}
 	?>
 	
 	<div class=wrap>
@@ -145,34 +162,41 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 			 ?>&raquo;" /></div>
 		</form>
 		</div>
+		<?php $spamArray = get_option("afdn_error_page_spam"); ?>
+		<div class="wrap">
+			<h2>Caught Spam</h2>
+			<p>You can delete all of the error page comment spam with a single click. This operation cannot be undone, so you may wish to check to ensure that no legitimate error page comments got through first. Spam is automatically deleted after 14 days, so don't sweat it.</p>
+			<p>There are currently <?php print(is_array($spamArray)?count($spamArray):"0"); ?> error page comments identified as spam. <form method="post"><input type="submit" name="deleteAll" value="Delete all" /></form></p>
+		</div>
 		<div class="wrap">
 			<h2>Last 14 Days</h2>
 			<form method="post">
 			<ol id="spam-list" class="commentlist">
-			<?php 	$spamArray = get_option("afdn_error_page_spam");
-					for($i=0; $i<count($spamArray); $i++){
+			<?php 
+					if(is_array($spamArray)){
+						for($i=0; $i<count($spamArray); $i++){
+							
+								echo "<li id='comment-$i' ".($i%2==1?"class=\"alternate\"":NULL)."><p>";
+		
+								echo "<strong>Name:</strong> ".$spamArray[$i]["userName"]." | ";
+								echo "<strong>Email:</strong> ".$spamArray[$i]["userEmail"]." | ";
+								echo "<strong>IP:</strong> ".$spamArray[$i]["remoteIP"]." | ";
+								echo "<strong>Date/Time:</strong> ".$spamArray[$i]["dateTime"]."<br />\n";
+		
+								echo "<strong>Referer:</strong> ".$spamArray[$i]["referer"]." | ";
+								echo "<strong>Bad Page:</strong> ".$spamArray[$i]["badPage"]." | ";
+								echo "<strong>User-Agent:</strong> ".$spamArray[$i]["userAgent"]."<br />\n";
+								
+								echo "<strong>Comment:</strong><br /> ".$spamArray[$i]["comment"];
+								
+								echo "</p>";
+								
+								echo "<label for=\"spam-$i\"><input type=\"checkbox\" id=\"spam-$i\" name=\"not_spam[]\" value=\"$i\" />Not Spam</label>";
+								
+								echo "</li>\n";
 						
-							echo "<li id='comment-$i' ".($i%2==1?"class=\"alternate\"":NULL)."><p>";
-	
-							echo "<strong>Name:</strong> ".$spamArray[$i]["userName"]." | ";
-							echo "<strong>Email:</strong> ".$spamArray[$i]["userEmail"]." | ";
-							echo "<strong>IP:</strong> ".$spamArray[$i]["remoteIP"]." | ";
-							echo "<strong>Date/Time:</strong> ".$spamArray[$i]["dateTime"]."<br />\n";
-	
-							echo "<strong>Referer:</strong> ".$spamArray[$i]["referer"]." | ";
-							echo "<strong>Bad Page:</strong> ".$spamArray[$i]["badPage"]." | ";
-							echo "<strong>User-Agent:</strong> ".$spamArray[$i]["userAgent"]."<br />\n";
-							
-							echo "<strong>Comment:</strong><br /> ".$spamArray[$i]["comment"];
-							
-							echo "</p>";
-							
-							echo "<label for=\"spam-$i\"><input type=\"checkbox\" id=\"spam-$i\" name=\"not_spam[]\" value=\"$i\" />Not Spam</label>";
-							
-							echo "</li>\n";
-					
-					}
-					
+						}
+					}					
 					 ?>
 			</ol>
 			<div class="submit"><input type="submit" name="unspam" value="<?php _e('Not Spam', 'Localization name')
@@ -269,6 +293,16 @@ function afdn_error_page(){
 		$message .= "Email: $email\r\n";
 		$message .= "Comment: $comment\r\n";
 		$message .= "Spam: ".($isSpam==true?"Yes":"No")."\r\n";
+		$message .= "\r\n";
+		$message .= "If this is spam, visit: ".get_settings("siteurl")."/wp-admin/options-general.php?page=afdn_error_page.php&isSpam=isSpam";
+		$message .= "&referer=".urlencode($referer);
+		$message .= "&badpage=".urlencode($badpage);
+		$message .= "&useragent=".urlencode($_SERVER['HTTP_USER_AGENT']);
+		$message .= "&username=".urlencode($name);
+		$message .= "&useremail=".urlencode($email);
+		$message .= "&comment=".urlencode($comment);
+		$message .= "$remoteip=".urlencode($_SERVER['REMOTE_ADDR']);
+	
 		if(preg_match('/(www\.)?'.$referedURL['host'].'/', $siteURL['host'])){		//Check to make sure the referer at least appears to be coming from your site
 			if(!$isSpam)
 				mail(get_option('admin_email'), '['.get_option("blogname").'] 404 Error Report', $message);
