@@ -3,7 +3,7 @@
 Plugin Name: Dunstan-style Error Page
 Plugin URI: http://www.andrewferguson.net/wordpress-plugins/#errorpage
 Plugin Description: A fuller featured 404 error page modeled from http://1976design.com/blog/error/
-Version: 1.2
+Version: 1.21
 Author: Andrew Ferguson
 Author URI: http://www.andrewferguson.net/
 */
@@ -31,9 +31,63 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 */
 
+add_action('admin_menu', 'afdn_error_page_optionsPage');	//Add Action for adding the options page to admin panel
+add_action('admin_menu', 'afdn_error_page_mgmtPage');		//Add Action for adding the managememt page to admin panel
+
+function afdn_error_page_optionsPage(){						//Action function for adding the configuration panel to the Options Page
+	if(function_exists('add_options_page')){
+			add_options_page('Error Page', 'Error Page', 10, basename(__FILE__), 'afdn_error_page_myOptionsSubpanel');
+	}
+}
+
+function afdn_error_page_mgmtPage(){						//Action function for adding the configuration panel to the Options Page
+	if(function_exists('add_options_page')){
+			add_management_page('Error Page', 'Error Page', 10, basename(__FILE__), 'afdn_error_page_myManagementSubpanel');
+	}
+}
+
+function afdn_is_comment_spam($name, $email, $comment) {					//Check to see if a submited error report could be spam
+	$getOptions = get_option("afdn_error_page");
+	
+	if($getOptions['akismetKey'] == NULL)							//See if the API key has been set
+		return "You have not entered a valid key!";					//If the API key isn't set, stop the checking process and just let the user know they don't have a key
+		
+	# populate comment information
+	$comment_data = array(
+		'user_ip'               => $_SERVER['REMOTE_ADDR'],			//Submitters IP Address
+		'user_agent'            => $_SERVER['HTTP_USER_AGENT'],		//Submitters User Agent
+    	'referrer'              => $_REQUEST['REFERER'],			//Submitters Referer
+	    'comment_type'          => 'error_report',					//What type of 'comment' it is. Note: Akismet lets this be anything
+	    'comment_author'        => $name,							//Submitters name
+	    'comment_author_email'  => $email,							//Submitters email address
+	    'comment_content'       => $comment,						//Submitters actual comment
+	);
+
+	# create akismet handle
+	$ak = new afdn_Akismet($getOptions['akismetKey'], get_bloginfo('url'));
+
+	# return akismet result (true for spam, false for ham)
+	if($ak->check_comment($comment_data))
+		return true;
+	else
+		return false;
+}
+
+function afdn_is_key_valid($keyID){							//Check the validity of the key
+	
+	//Create Akismet handle
+	$ak = new afdn_Akismet($keyID, get_bloginfo('url'));
+	
+	//Check key
+	if($ak->verify_key())
+		return true;
+	else
+		return false;
+}
+
 function afdn_error_page_myOptionsSubpanel(){
-$pluginVersion = "1.2"; 																		//Current Version of plugin
-$updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.inc?format=txt";	//Where to check for updates
+	$pluginVersion = "1.21"; 																		//Current Version of plugin
+	$updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.inc?format=txt";	//Where to check for updates
 
 	if(isset($_POST["action"])){
 		if (($_POST["action"] == 'info_update') && (afdn_is_key_valid($_POST['akismetKey']))){	//If updates were submited, check to see if the API key is valid
@@ -121,7 +175,7 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 						}
 						elseif($currentVersion > $pluginVersion){			//Version is not current
 						  echo "You have version <strong>$pluginVersion</strong>, the current version is <strong>$currentVersion</strong>.<br />";
-						  echo "Download the latest version at <a href=\"http://dev.wp-plugins.org/file/dunstan-error-page/trunk/afdn_error_page.php\">http://dev.wp-plugins.org/file/dunstan-error-page/trunk/afdn_error_page.php</a>";
+						  echo "Download the latest version at <a href=\"http://dev.wp-plugins.org/file/dunstan-error-page/tags/$currentVersion/afdn_error_page.php?format=raw\">http://dev.wp-plugins.org/file/dunstan-error-page/tags/$currentVersion/afdn_error_page.php?format=raw</a>";
 						}
 						elseif($currentVersion < $pluginVersion){			//Version is higher then current stable (i.e. Alpha/Beta version)
 							echo "Beta version, eh?";
@@ -204,53 +258,6 @@ $updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.in
 			</form>
 			<? } ?>
 	</div> <?
-}
-
-function afdn_error_page_optionsPage(){						//Action function for adding the configuration panel to the Options Page
-	if(function_exists('add_options_page')){
-			add_options_page('Error Page', 'Error Page', 10, basename(__FILE__), 'afdn_error_page_myOptionsSubpanel');
-	}
-}
-
-add_action('admin_menu', 'afdn_error_page_optionsPage');	//Add Action for adding the options page to admin panel
-
-function afdn_is_comment_spam($name, $email, $comment) {					//Check to see if a submited error report could be spam
-	$getOptions = get_option("afdn_error_page");
-	
-	if($getOptions['akismetKey'] == NULL)							//See if the API key has been set
-		return "You have not entered a valid key!";					//If the API key isn't set, stop the checking process and just let the user know they don't have a key
-		
-	# populate comment information
-	$comment_data = array(
-		'user_ip'               => $_SERVER['REMOTE_ADDR'],			//Submitters IP Address
-		'user_agent'            => $_SERVER['HTTP_USER_AGENT'],		//Submitters User Agent
-    	'referrer'              => $_REQUEST['REFERER'],			//Submitters Referer
-	    'comment_type'          => 'error_report',					//What type of 'comment' it is. Note: Akismet lets this be anything
-	    'comment_author'        => $name,							//Submitters name
-	    'comment_author_email'  => $email,							//Submitters email address
-	    'comment_content'       => $comment,						//Submitters actual comment
-	);
-
-	# create akismet handle
-	$ak = new afdn_Akismet($getOptions['akismetKey'], get_bloginfo('url'));
-
-	# return akismet result (true for spam, false for ham)
-	if($ak->check_comment($comment_data))
-		return true;
-	else
-		return false;
-}
-
-function afdn_is_key_valid($keyID){							//Check the validity of the key
-	
-	//Create Akismet handle
-	$ak = new afdn_Akismet($keyID, get_bloginfo('url'));
-	
-	//Check key
-	if($ak->verify_key())
-		return true;
-	else
-		return false;
 }
 
 //This is the function that handles all the error reporting
@@ -361,7 +368,7 @@ function afdn_error_page(){
 		<?php if($reported){?>
 			<h3>Thank you for submitting an error report.</h3>				
 		<?php } ?>
-			<p>For some reason, the page your trying to access doesn't exist. Hopefully the information below can be of some assistance - <?php print(isset($getOptions["name"])?$getOptions["name"]:"Mgmt"); ?>.</p>
+			<p>For some reason, the page you're trying to access doesn't exist. Hopefully the information below can be of some assistance - <?php print(isset($getOptions["name"])?$getOptions["name"]:"Mgmt"); ?>.</p>
 			<table border="0">
 				<tr>
 					<td valign="top" width = "50%">
