@@ -3,7 +3,7 @@
 Plugin Name: Dunstan-style Error Page
 Plugin URI: http://www.andrewferguson.net/wordpress-plugins/#errorpage
 Plugin Description: A fuller featured 404 error page modeled from http://1976design.com/blog/error/
-Version: 1.21
+Version: 1.3
 Author: Andrew Ferguson
 Author URI: http://www.andrewferguson.net/
 */
@@ -47,11 +47,11 @@ function afdn_error_page_mgmtPage(){						//Action function for adding the confi
 }
 
 function afdn_is_comment_spam($name, $email, $comment) {					//Check to see if a submited error report could be spam
-	$getOptions = get_option("afdn_error_page");
-	
+	$getOptions = unserialze(get_option("afdn_error_page"));
+
 	if($getOptions['akismetKey'] == NULL)							//See if the API key has been set
 		return "You have not entered a valid key!";					//If the API key isn't set, stop the checking process and just let the user know they don't have a key
-		
+
 	# populate comment information
 	$comment_data = array(
 		'user_ip'               => $_SERVER['REMOTE_ADDR'],			//Submitters IP Address
@@ -74,10 +74,10 @@ function afdn_is_comment_spam($name, $email, $comment) {					//Check to see if a
 }
 
 function afdn_is_key_valid($keyID){							//Check the validity of the key
-	
+
 	//Create Akismet handle
 	$ak = new afdn_Akismet($keyID, get_bloginfo('url'));
-	
+
 	//Check key
 	if($ak->verify_key())
 		return true;
@@ -86,7 +86,7 @@ function afdn_is_key_valid($keyID){							//Check the validity of the key
 }
 
 function afdn_error_page_myOptionsSubpanel(){
-	$pluginVersion = "1.21"; 																		//Current Version of plugin
+	$pluginVersion = "1.3"; 																		//Current Version of plugin
 	$updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.inc?format=txt";	//Where to check for updates
 
 	if(isset($_POST["action"])){
@@ -95,7 +95,7 @@ function afdn_error_page_myOptionsSubpanel(){
 								"num_posts" => $_POST['num_posts'],
 								"accessed" => $_POST['accessed'],
 								"checkUpdate" => $_POST['checkUpdate'],
-								"akismetKey" => $_POST['akismetKey'],							
+								"akismetKey" => $_POST['akismetKey'],
 								);
 			update_option("afdn_error_page", serialize($results));					//If it is, go ahead and update the information, including the API key
 		}
@@ -103,14 +103,14 @@ function afdn_error_page_myOptionsSubpanel(){
 			$results = array(	"name" => $_POST['name'],
 								"num_posts" => $_POST['num_posts'],
 								"accessed" => $_POST['accessed'],
-								"checkUpdate" => $_POST['checkUpdate'],							
+								"checkUpdate" => $_POST['checkUpdate'],
 								);
 			update_option("afdn_error_page", serialize($results));					//If it's not, update everything but the API key and....
 			$keyInvalid = true;														//...set a flag that the API key was invalid
 		}
 		elseif($_POST["action"] == "unspam"){
-			$getOptions = get_option("afdn_error_page");
-			$spamArray = get_option("afdn_error_page_spam");
+			$getOptions = unserialze(get_option("afdn_error_page"));
+			$spamArray = unserialze(get_option("afdn_error_page_spam"));
 			foreach($_POST["not_spam"] as $spam_id){
 					# populate comment information
 					$comment_data = array(
@@ -140,9 +140,9 @@ function afdn_error_page_myOptionsSubpanel(){
 		elseif($_POST["action"] == "deleteAll"){
 			update_option("afdn_error_page_spam", NULL);
 			echo '<div id="message" class="updated fade"><p>All spam deleted.</p></div>';
-		}	
+		}
 		elseif($_GET["action"] = "isSpam"){
-			$getOptions = get_option("afdn_error_page");
+			$getOptions = unserialze(get_option("afdn_error_page"));
 			$ak = new afdn_Akismet($getOptions['akismetKey'], get_bloginfo('url'));
 			$comment_data = array(
 											'user_ip'               => $_GET["remoteip"],
@@ -158,15 +158,15 @@ function afdn_error_page_myOptionsSubpanel(){
 			}
 		}
 	}
-	
-	$getOptions = get_option("afdn_error_page");
+
+	$getOptions = unserialze(get_option("afdn_error_page"));
 	?>
 	<div class=wrap>
 		<form method="post">
 		<h2>Error Page</h2>
 			<fieldset name="management" class="options">
 				<legend><strong>Management</strong></legend>
-					Check for updates? <input name="checkUpdate" type="radio" value="1" <?php print($getOptions["checkUpdate"]==1?"checked":NULL)?> />Yes :: <input name="checkUpdate" type="radio" value="0" <?php print($getOptions["checkUpdate"]==0?"checked":NULL)?>/>No		
+					Check for updates? <input name="checkUpdate" type="radio" value="1" <?php print($getOptions["checkUpdate"]==1?"checked":NULL)?> />Yes :: <input name="checkUpdate" type="radio" value="0" <?php print($getOptions["checkUpdate"]==0?"checked":NULL)?>/>No
 					<?php if($getOptions["checkUpdate"]==1){				//If set to 1, then updates will be checked for
 						echo "<br /><br />";
 						$currentVersion = file_get_contents($updateURL);	//Get the latest version number
@@ -179,11 +179,11 @@ function afdn_error_page_myOptionsSubpanel(){
 						}
 						elseif($currentVersion < $pluginVersion){			//Version is higher then current stable (i.e. Alpha/Beta version)
 							echo "Beta version, eh?";
-						}	
+						}
 					}
 						?>
 			</fieldset>
-			
+
 			<fieldset name="configuration" class="options">
 			<legend><strong>Options</strong></legend>
 				<p>Only three configuration options right now. Type in the name of the owner of the blog, how many posts you want displayed on the 404 page, and how the error page is reached. You also need to set your 404 page to index.php?error=404. In apache you would add a line of code that looks similar to this: <code>ErrorDocument 404 "/index.php?error=404"</code>
@@ -195,12 +195,12 @@ function afdn_error_page_myOptionsSubpanel(){
 				&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Redirect
 				<input name="accessed" type="radio" value="redirect" <?php print($getOptions["accessed"]=="redirect"?"checked":NULL) ?> /></p>
 			</fieldset>
-			
+
 			<fieldset name="akismetSettings" class="options">
 				<legend><strong>Akismet Settings</strong></legend>
 				<?php if($keyInvalid){ //P.S. I took this from the Akismet plugin. It alerts the user if their key is invalid ?>
 					<p style="padding: .5em; background-color: #f33; color: #fff; font-weight: bold;"><?php _e('Your key appears invalid. Double-check it.'); ?></p>
-				<?php } ?>				
+				<?php } ?>
 				<p>
 				<p>WordPress.com API Key: <input name="akismetKey" type="text" value="<?php echo $getOptions["akismetKey"]; ?>" /> (<a href="http://faq.wordpress.com/2005/10/19/api-key/" target="_blank">What is this?</a>)</p>
 			</fieldset>
@@ -209,47 +209,47 @@ function afdn_error_page_myOptionsSubpanel(){
 			 ?>&raquo;" /></div>
 		</form>
 		</div>
-		<?php $spamArray = get_option("afdn_error_page_spam"); ?>
+		<?php $spamArray = unserialze(get_option("afdn_error_page_spam")); ?>
 		<div class="wrap">
 			<h2>Caught Spam</h2>
 			<p>You can delete all of the error page comment spam with a single click. This operation cannot be undone, so you may wish to check to ensure that no legitimate error page comments got through first.</p>
-			<p>There are currently <?php print(is_array($spamArray)?count($spamArray):"0"); ?> error page comments identified as spam. 
+			<p>There are currently <?php print(is_array($spamArray)?count($spamArray):"0"); ?> error page comments identified as spam.
 			<? if(is_array($spamArray)){ ?>
 			<form method="post"><input type="hidden" name="action" value="deleteAll" /><input type="submit" name="deleteAll" value="Delete all" /></form>
 			<? } ?>
 			</p>
-			
+
 		</div>
 		<?php if(is_array($spamArray)){ ?>
 		<div class="wrap">
 			<h2>Error Page Spam Comments</h2>
 			<form method="post">
 			<ol id="spam-list" class="commentlist">
-			<?php 
+			<?php
 					if(is_array($spamArray)){
 						for($i=0; $i<count($spamArray); $i++){
-							
+
 								echo "<li id='comment-$i' ".($i%2==1?"class=\"alternate\"":NULL)."><p>";
-		
+
 								echo "<strong>Name:</strong> ".$spamArray[$i]["userName"]." | ";
 								echo "<strong>Email:</strong> ".$spamArray[$i]["userEmail"]." | ";
 								echo "<strong>IP:</strong> ".$spamArray[$i]["remoteIP"]." | ";
 								echo "<strong>Date/Time:</strong> ".$spamArray[$i]["dateTime"]."<br />\n";
-		
+
 								echo "<strong>Referer:</strong> ".$spamArray[$i]["referer"]." | ";
 								echo "<strong>Bad Page:</strong> ".$spamArray[$i]["badPage"]." | ";
 								echo "<strong>User-Agent:</strong> ".$spamArray[$i]["userAgent"]."<br />\n";
-								
+
 								echo "<strong>Comment:</strong><br /> ".$spamArray[$i]["comment"];
-								
+
 								echo "</p>";
-								
+
 								echo "<label for=\"spam-$i\"><input type=\"checkbox\" id=\"spam-$i\" name=\"not_spam[]\" value=\"$i\" />Not Spam</label>";
-								
+
 								echo "</li>\n";
-						
+
 						}
-					}					
+					}
 					 ?>
 			</ol>
 			<input type="hidden" name="action" value="unspam" />
@@ -266,18 +266,18 @@ function afdn_error_page(){
 	/*Start transfering values from POST*/
 	$referer = $_POST["referer"];
 	$badpage = $_POST["badpage"];
-	
+
 	$name = $_POST["name"];
 	$email = $_POST["email"];
 	$comment = $_POST["comment"];
 	/*End transfering values from POST*/
-	
+
 	if(isset($_POST["submit_quick"])) $submit_quick = true;			//Is this a quick error report or...
 	if(isset($_POST["submit_feedback"])) $submit_feedback = true;	//Is this a detailed error report?
 
 	$siteURL = parse_url(get_settings('siteurl'));					//What is your actual site address?
 	$referedURL = parse_url($_SERVER['HTTP_REFERER']);				//What did the referer say your site address was?
-	
+
 	if($submit_quick)																//For a quick error report
 	{
 		$message = "A 404 error was recieved by ".$_SERVER['REMOTE_ADDR']." on ". date("r", time()).".\n";
@@ -310,19 +310,19 @@ function afdn_error_page(){
 		$message .= "&useremail=".urlencode($email);
 		$message .= "&comment=".urlencode($comment);
 		$message .= "&remoteip=".urlencode($_SERVER['REMOTE_ADDR']);
-	
+
 		if(preg_match('/(www\.)?'.$referedURL['host'].'/', $siteURL['host'])){		//Check to make sure the referer at least appears to be coming from your site
 			if(!$isSpam)
 				mail(get_option('admin_email'), '['.get_option("blogname").'] 404 Error Report', $message);
 			else{
-				$spamArray = get_option("afdn_error_page_spam");
-				
-				
+				$spamArray = unserialze(get_option("afdn_error_page_spam"));
+
+
 				if(is_array($spamArray))
 					$i = count($spamArray);
 				else
 					$i = 0;
-							
+
 				$spamArray[$i] = array(	"errorCode" => "404",
 											"remoteIP" => $_SERVER['REMOTE_ADDR'],
 											"dateTime" => date("r", time()),
@@ -334,10 +334,10 @@ function afdn_error_page(){
 											"comment" => $comment,
 											"isSpam" => true,
 										);
-				
+
 				update_option("afdn_error_page_spam", serialize($spamArray));
 			}
-				
+
 			$reported = true;														//Flag so that the user knows their report has been sent
 		}
 	}
@@ -345,28 +345,28 @@ function afdn_error_page(){
 	{
 		$reported = false;															//If a report is attempted to be filed, but didn't go through
 	}
-	
+
 	?>
-	
+
 	<?php get_header(); ?>
 
 	<?php
-		$getOptions = get_option("afdn_error_page");
-	
+		$getOptions = unserialze(get_option("afdn_error_page"));
+
 		if($getOptions["accessed"]=="redirect"){
 		  $httpReferer = $_GET['referer'];
 		  $requestURI = $_GET['requested'];
-	
+
 		}
 		else{
 		  $httpReferer = $_SERVER['HTTP_REFERER'];
 		  $requestURI = $_SERVER['REQUEST_URI'];
 		}
-		
+
 	?>
 		<div id="content" style = "padding: 20px">
 		<?php if($reported){?>
-			<h3>Thank you for submitting an error report.</h3>				
+			<h3>Thank you for submitting an error report.</h3>
 		<?php } ?>
 			<p>For some reason, the page you're trying to access doesn't exist. Hopefully the information below can be of some assistance - <?php print(isset($getOptions["name"])?$getOptions["name"]:"Mgmt"); ?>.</p>
 			<table border="0">
@@ -416,12 +416,12 @@ function afdn_error_page(){
 							<div>
 								<input type="hidden" name="referer" value="<?PHP echo $httpReferer; ?>" />
 								<input type="hidden" name="badpage" value="<?PHP echo $requestURI; ?>" />
-							</div>						
+							</div>
 							<p>
 								<label for="name">Name:</label><br /><input type="text" id="name" name="name" size="30" <?php if($reported) echo "disabled"; ?> /><br />
 								<label for="email">Email:</label><br /><input type="text" id="email" name="email" size="30" <?php if($reported) echo "disabled"; ?> /><br />
 								<label for="comment">Comment:</label><br /><textarea id="comment" name="comment" cols="22" rows="5" <?php if($reported) echo "disabled"; ?> ></textarea>
-							</p>						
+							</p>
 							<p><input type="submit" name="submit_feedback" value="submit error report" <?php if($reported) echo "disabled"; ?> /></p>
 						</form>
 					</td>
@@ -466,10 +466,10 @@ class afdn_Akismet {
     $this->verify_post_args($post_args);
     return ($this->call('/1.1/submit-ham', $post_args, "{$this->api_key}.rest.akismet.com") != 'false');
   }
-  
+
   function verify_key() {
   	$sendKey = array('key' => $this->api_key);
-	return ($this->call('/1.1/verify-key', $sendKey, "rest.akismet.com") != 'invalid');  
+	return ($this->call('/1.1/verify-key', $sendKey, "rest.akismet.com") != 'invalid');
   }
 
   function verify_post_args($post_args) {
@@ -480,14 +480,14 @@ class afdn_Akismet {
   }
 
 	function call($meth, $post_args, $host, $port = 80) {
-	
+
 		$post_args['blog'] = $this->blog;
 
 		foreach($post_args as $key => $value){
 			$http_content .= $key."=".urlencode($value)."&";
 		}
 		$http_content = rtrim($http_content, "&");
-		
+
 		$http_request  = "POST $meth HTTP/1.0\r\n";
 		$http_request .= "Host: $host\r\n";
 		$http_request .= "Content-Type: application/x-www-form-urlencoded; charset=" . get_settings('blog_charset') . "\r\n";
