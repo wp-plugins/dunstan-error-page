@@ -47,7 +47,7 @@ function afdn_error_page_mgmtPage(){						//Action function for adding the confi
 }
 
 function afdn_is_comment_spam($name, $email, $comment) {					//Check to see if a submited error report could be spam
-	$getOptions = unserialze(get_option("afdn_error_page"));
+	$getOptions = unserialize(get_option("afdn_error_page"));
 
 	if($getOptions['akismetKey'] == NULL)							//See if the API key has been set
 		return "You have not entered a valid key!";					//If the API key isn't set, stop the checking process and just let the user know they don't have a key
@@ -109,8 +109,8 @@ function afdn_error_page_myOptionsSubpanel(){
 			$keyInvalid = true;														//...set a flag that the API key was invalid
 		}
 		elseif($_POST["action"] == "unspam"){
-			$getOptions = unserialze(get_option("afdn_error_page"));
-			$spamArray = unserialze(get_option("afdn_error_page_spam"));
+			$getOptions = unserialize(get_option("afdn_error_page"));
+			$spamArray = unserialize(get_option("afdn_error_page_spam"));
 			foreach($_POST["not_spam"] as $spam_id){
 					# populate comment information
 					$comment_data = array(
@@ -142,7 +142,7 @@ function afdn_error_page_myOptionsSubpanel(){
 			echo '<div id="message" class="updated fade"><p>All spam deleted.</p></div>';
 		}
 		elseif($_GET["action"] = "isSpam"){
-			$getOptions = unserialze(get_option("afdn_error_page"));
+			$getOptions = unserialize(get_option("afdn_error_page"));
 			$ak = new afdn_Akismet($getOptions['akismetKey'], get_bloginfo('url'));
 			$comment_data = array(
 											'user_ip'               => $_GET["remoteip"],
@@ -159,7 +159,7 @@ function afdn_error_page_myOptionsSubpanel(){
 		}
 	}
 
-	$getOptions = unserialze(get_option("afdn_error_page"));
+	$getOptions = unserialize(get_option("afdn_error_page"));
 	?>
 	<div class=wrap>
 		<form method="post">
@@ -209,7 +209,7 @@ function afdn_error_page_myOptionsSubpanel(){
 			 ?>&raquo;" /></div>
 		</form>
 		</div>
-		<?php $spamArray = unserialze(get_option("afdn_error_page_spam")); ?>
+		<?php $spamArray = unserialize(get_option("afdn_error_page_spam")); ?>
 		<div class="wrap">
 			<h2>Caught Spam</h2>
 			<p>You can delete all of the error page comment spam with a single click. This operation cannot be undone, so you may wish to check to ensure that no legitimate error page comments got through first.</p>
@@ -315,7 +315,7 @@ function afdn_error_page(){
 			if(!$isSpam)
 				mail(get_option('admin_email'), '['.get_option("blogname").'] 404 Error Report', $message);
 			else{
-				$spamArray = unserialze(get_option("afdn_error_page_spam"));
+				$spamArray = unserialize(get_option("afdn_error_page_spam"));
 
 
 				if(is_array($spamArray))
@@ -351,7 +351,7 @@ function afdn_error_page(){
 	<?php get_header(); ?>
 
 	<?php
-		$getOptions = unserialze(get_option("afdn_error_page"));
+		$getOptions = unserialize(get_option("afdn_error_page"));
 
 		if($getOptions["accessed"]=="redirect"){
 		  $httpReferer = $_GET['referer'];
