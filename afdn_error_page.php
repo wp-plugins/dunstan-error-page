@@ -3,7 +3,7 @@
 Plugin Name: Dunstan-style Error Page
 Plugin URI: http://www.andrewferguson.net/wordpress-plugins/#errorpage
 Plugin Description: A fuller featured 404 error page modeled from http://1976design.com/blog/error/
-Version: 1.3
+Version: 1.3.1
 Author: Andrew Ferguson
 Author URI: http://www.andrewferguson.net/
 */
@@ -32,17 +32,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
 add_action('admin_menu', 'afdn_error_page_optionsPage');	//Add Action for adding the options page to admin panel
-add_action('admin_menu', 'afdn_error_page_mgmtPage');		//Add Action for adding the managememt page to admin panel
 
 function afdn_error_page_optionsPage(){						//Action function for adding the configuration panel to the Options Page
 	if(function_exists('add_options_page')){
 			add_options_page('Error Page', 'Error Page', 10, basename(__FILE__), 'afdn_error_page_myOptionsSubpanel');
-	}
-}
-
-function afdn_error_page_mgmtPage(){						//Action function for adding the configuration panel to the Options Page
-	if(function_exists('add_options_page')){
-			add_management_page('Error Page', 'Error Page', 10, basename(__FILE__), 'afdn_error_page_myManagementSubpanel');
 	}
 }
 
@@ -86,7 +79,7 @@ function afdn_is_key_valid($keyID){							//Check the validity of the key
 }
 
 function afdn_error_page_myOptionsSubpanel(){
-	$pluginVersion = "1.3"; 																		//Current Version of plugin
+	$pluginVersion = "1.3.1"; 																		//Current Version of plugin
 	$updateURL = "http://dev.wp-plugins.org/file/dunstan-error-page/trunk/version.inc?format=txt";	//Where to check for updates
 
 	if(isset($_POST["action"])){
