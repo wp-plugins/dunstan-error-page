@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Dunstan-style Error Page
-Plugin URI: http://www.andrewferguson.net/wordpress-plugins/#errorpage
+Plugin URI: http://www.andrewferguson.net/wordpress-plugins/dunstan-style-error-page/
 Plugin Description: A fuller featured 404 error page modeled from http://1976design.com/blog/error/
 Version: 1.3.1
 Author: Andrew Ferguson
